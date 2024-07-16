@@ -40,16 +40,14 @@ def blur_image(image, save_path):
 
     print(f"Image blurred and saved to {save_path}")
 
-def change_background_color(image_path, save_path):
+def change_background_color(image, save_path):
     """
     Changes the background color of an image from white to a new color.
 
     Parameters:
-    - image_path: str, path to the input image.
+    - image: PIL.Image object, the image to change the background color of.
     - save_path: str, path where the image with changed background color will be saved.
     """
-    # Open the image
-    image = Image.open(image_path)
 
     # Select a random RGB color
     new_color = (np.random.randint(0, 256), np.random.randint(0, 256), np.random.randint(0, 256))
@@ -63,8 +61,10 @@ def change_background_color(image_path, save_path):
     # Replace white or nearly white pixels with the new background color
     # Define white threshold in terms of RGB values
     white_threshold = 245
+
     # Create a mask where white or nearly white pixels are marked as True
     mask = np.all(data >= white_threshold, axis=-1)
+    
     # Change all pixels in the mask to the new color
     data[mask] = new_color
 
@@ -122,8 +122,8 @@ if __name__ == "__main__":
             blur_image(image, image_path)
         
             # Background color change
-            change_background_color(image_path, image_path)
+            change_background_color(image, image_path)
 
-            # Color jitter the image
+            # TODO: Color jitter the image
                     
             print("Processing complete.")
