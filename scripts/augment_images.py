@@ -79,6 +79,9 @@ def change_background_color(image, save_path):
 
 if __name__ == "__main__":
 
+    # Define the number of degrees to rotate the image by
+    degrees = 30
+    
     # Define the argument parser
     parser = argparse.ArgumentParser(description="Rotate an image by a given number of degrees.")
 
@@ -87,43 +90,31 @@ if __name__ == "__main__":
 
     # Parse the arguments
     args = parser.parse_args()
+    path = args.root_dir
 
-    root_folder = args.root_dir
+    # List all files in the source directory
+    files = os.listdir(path)
 
-    # Define the number of degrees to rotate the image by
-    degrees = 30
+    for file in files:
+        # Get the path if the file is an image
+        if file.endswith('.jpg'):
+            image_path = os.path.join(path, file)
 
+    # Check if the file is an image based on its extension and content
+    if imghdr.what(image_path) is not None:
+        try:
+            # Open the image
+            image = Image.open(image_path)
+        except IOError:
+            print(f"Error opening image file: {image_path}")
+    else:
+        print(f"The file is not recognized as an image: {image_path}")
 
-    # Iterate over each subfolder in the root folder
-    for folder_name in os.listdir(root_folder):
-        
-        folder_path = os.path.join(root_folder, folder_name)
-        print(f"Processing folder {folder_path}...")
-        
-        if os.path.isdir(folder_path):
-            # There's only one image per folder, get the first image file
-            image_name = os.listdir(folder_path)[0]
-            image_path = os.path.join(folder_path, image_name)
-            
-            # Check if the file is an image based on its extension and content
-            if imghdr.what(image_path) is not None:
-                try:
-                    # Open the image
-                    image = Image.open(image_path)
-                except IOError:
-                    print(f"Error opening image file: {image_path}")
-            else:
-                print(f"The file is not recognized as an image: {image_path}")
-            
-            # Rotate the image
-            rotate_image(image, degrees, image_path)
+    # Rotate the image
+    rotate_image(image, degrees, image_path)
 
-            # Blur the image
-            blur_image(image, image_path)
-        
-            # Background color change
-            change_background_color(image, image_path)
+    # Blur the image
+    blur_image(image, image_path)
 
-            # TODO: Color jitter the image
-                    
-            print("Processing complete.")
+    # Background color change
+    change_background_color(image, image_path)
