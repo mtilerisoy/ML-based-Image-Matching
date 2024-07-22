@@ -101,7 +101,7 @@ def create_metadata_in_folders(source_dir):
         if os.path.isdir(folder_path):
             
             # Update the 'design_label' field with the formatted folder name
-            metadata_blueprint['design_label'] = item
+            # metadata_blueprint['design_label'] = item
 
             # Define the path for the metadata.json file
             metadata_file_path = os.path.join(folder_path, 'metadata.json')
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     # Processes a bunch of jpg files to organize them into a database-like structure
 
     source_directory = 'data/models'
-    rename_files(source_directory)
-    organize_jpgs(source_directory)
-    create_metadata_in_folders(source_directory)
+    # rename_files(source_directory)
+    # organize_jpgs(source_directory)
+    # create_metadata_in_folders(source_directory)
     
