@@ -7,10 +7,10 @@ def load_image_from_folder(folder_path):
     Loads an image as a PIL image from a given folder path.
     
     Parameters:
-    folder_path: Path to the folder containing the image.
+    - folder_path: str, Path to the folder containing the image.
 
     Returns:
-    A PIL Image object, or None if no image is found.
+    - A PIL Image object, or None if no image is found.
     """
 
     # List all files in the given folder
@@ -33,10 +33,10 @@ def load_design_label(metadata_path):
     Loads the 'metadata.json' file from a given folder and returns the 'design_label' field.
     
     Parameters:
-    metadata_path: Path to the 'metadata.json' file.
+    - metadata_path: str, Path to the 'metadata.json' file.
 
     Returns:
-    The value of the 'design_label' field, or None if not found.
+    - str, The value of the 'design_label' field, or None if not found.
     """
     
     metadata_path = os.path.join(metadata_path, 'metadata.json')
@@ -57,11 +57,11 @@ def find_folder(parent_dir, search_string):
 	and retrieves the value of the 'design_label' field from the 'metadata.json' file inside this folder.
 	
 	Parameters:
-	parent_dir: The parent directory to search within.
-	search_string: The string to search for in folder names.
+	- parent_dir: str, The parent directory to search within.
+	- search_string: str, The string to search for in folder names.
 	
 	Returns:
-	The value of the 'design_label' field, or None if not found.
+	- item_path: str, The apth to the matchng folder or None if not found.
     """
     
 	# Iterate over all items in the parent directory
