@@ -28,6 +28,8 @@ def crop_image(image, model):
     img /= 255.0  # Normalize the image
     img = img.permute((2, 0, 1)).unsqueeze(0)  # Add batch dimension
 
+    image = image.convert("RGB")
+
     # Inference
     results = model(img)
     boxes = results[0].boxes.xyxy.cpu().tolist()
