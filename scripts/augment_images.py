@@ -18,7 +18,7 @@ def rotate_image(image, degrees, save_path):
     rotated_image = image.rotate(degrees)
 
     # Save the rotated image
-    rotated_image.save(save_path[:-4]+'_rotated.jpg')
+    rotated_image.save(save_path[:-4]+'-rotated.jpg')
 
     print(f"Image rotated by {degrees} degrees and saved to {save_path}")
 
@@ -36,7 +36,7 @@ def blur_image(image, save_path):
     blurred_image = image.filter(ImageFilter.GaussianBlur())
 
     # Save the blurred image
-    blurred_image.save(save_path[:-4]+'_blurred.jpg')
+    blurred_image.save(save_path[:-4]+'-blurred.jpg')
 
     print(f"Image blurred and saved to {save_path}")
 
@@ -72,7 +72,7 @@ def change_background_color(image, save_path):
     result = Image.fromarray(data)
 
     # Save the image with the new background color
-    result.save(save_path[:-4]+'_background.jpg')
+    result.save(save_path[:-4]+'-background.jpg')
 
     print(f"Background color changed and image saved to {save_path}")
 
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rotate an image by a given number of degrees.")
 
     # Add the arguments
-    parser.add_argument("root_dir", type=str, help="Path to the input image.")
+    parser.add_argument("root_dir", type=str, help="Path to the image folder.")
 
     # Parse the arguments
     args = parser.parse_args()
@@ -100,21 +100,22 @@ if __name__ == "__main__":
         if file.endswith('.jpg'):
             image_path = os.path.join(path, file)
 
-    # Check if the file is an image based on its extension and content
-    if imghdr.what(image_path) is not None:
-        try:
-            # Open the image
-            image = Image.open(image_path)
-        except IOError:
-            print(f"Error opening image file: {image_path}")
-    else:
-        print(f"The file is not recognized as an image: {image_path}")
+        # Check if the file is an image based on its extension and content
+        if imghdr.what(image_path) is not None:
+            try:
+                # Open the image
+                image = Image.open(image_path)
+                # Rotate the image
+                rotate_image(image, degrees, image_path)
 
-    # Rotate the image
-    rotate_image(image, degrees, image_path)
+                # Blur the image
+                blur_image(image, image_path)
 
-    # Blur the image
-    blur_image(image, image_path)
+                # Background color change
+                change_background_color(image, image_path)
+            except IOError:
+                print(f"Error opening image file: {image_path}")
+        else:
+            print(f"The file is not recognized as an image: {image_path}")
 
-    # Background color change
-    change_background_color(image, image_path)
+    
