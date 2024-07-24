@@ -18,6 +18,9 @@ def crop_image(image, model):
     - PIL.Image object, the cropped image or None if no humans are detected.
     """
 
+    # Ensure the image is in RGB format
+    image = image.convert("RGB")
+
     # Resize the image to make its dimensions divisible by 32
     new_width = (image.width // 32) * 32
     new_height = (image.height // 32) * 32
@@ -28,10 +31,8 @@ def crop_image(image, model):
     img /= 255.0  # Normalize the image
     img = img.permute((2, 0, 1)).unsqueeze(0)  # Add batch dimension
 
-    image = image.convert("RGB")
-
     # Inference
-    results = model(img)
+    results = model(img, verbose=False)
     boxes = results[0].boxes.xyxy.cpu().tolist()
     classes = results[0].boxes.cls.cpu().tolist()
 
@@ -41,14 +42,14 @@ def crop_image(image, model):
         # Get the class name from the model class dictionary
         class_name = model.names[cls]
 
-        if class_name == 'person':
+        if class_name == 'person' or class_name == 'surfboard' or class_name == 'tie' or class_name == 'tennis racket' or class_name == 'sports ball' or class_name == 'frisbee':
             # Crop the image
             crop_img = image.crop((box[0], box[1], box[2], box[3]))
             cropped_images.append(crop_img)
         else:
             print(f"Skipping {class_name}")
             continue
-    return cropped_images if cropped_images else None
+    return cropped_images
 
 
 def crop_and_save_images(source_dir, model_path='yolov10x.pt'):
