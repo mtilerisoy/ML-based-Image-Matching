@@ -33,7 +33,7 @@ def blur_image(image, save_path):
     """
 
     # Apply a blur effect to the image
-    blurred_image = image.filter(ImageFilter.GaussianBlur())
+    blurred_image = image.filter(ImageFilter.GaussianBlur(radius=5))
 
     # Save the blurred image
     blurred_image.save(save_path[:-4]+'-blurred.jpg')
@@ -80,7 +80,7 @@ def change_background_color(image, save_path):
 if __name__ == "__main__":
 
     # Define the number of degrees to rotate the image by
-    degrees = 30
+    degrees = 60
     
     # Define the argument parser
     parser = argparse.ArgumentParser(description="Rotate an image by a given number of degrees.")
@@ -95,27 +95,45 @@ if __name__ == "__main__":
     # List all files in the source directory
     files = os.listdir(path)
 
+
     for file in files:
+        if file == '.DS_Store':
+            continue
+        
         # Get the path if the file is an image
-        if file.endswith('.jpg'):
+        if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
             image_path = os.path.join(path, file)
+            print(f"Processing image: {image_path}")
+            
+            # Open the image
+            image = Image.open(image_path)
 
-        # Check if the file is an image based on its extension and content
-        if imghdr.what(image_path) is not None:
-            try:
-                # Open the image
-                image = Image.open(image_path)
-                # Rotate the image
-                rotate_image(image, degrees, image_path)
+            # Esnure the image is in RGB mode
+            image = image.convert("RGB")
 
-                # Blur the image
-                blur_image(image, image_path)
+            # Rotate the image
+            rotate_image(image, degrees, image_path)
 
-                # Background color change
-                change_background_color(image, image_path)
-            except IOError:
-                print(f"Error opening image file: {image_path}")
-        else:
-            print(f"The file is not recognized as an image: {image_path}")
+            # Blur the image
+            blur_image(image, image_path)
+        
+
+        # # Check if the file is an image based on its extension and content
+        # if imghdr.what(image_path) is not None:
+        #     try:
+        #         # Open the image
+        #         image = Image.open(image_path)
+        #         # Rotate the image
+        #         rotate_image(image, degrees, image_path)
+
+        #         # Blur the image
+        #         blur_image(image, image_path)
+
+        #         # # Background color change
+        #         # change_background_color(image, image_path)
+        #     except IOError:
+        #         print(f"Error opening image file: {image_path}")
+        # else:
+        #     print(f"The file is not recognized as an image: {image_path}")
 
     
