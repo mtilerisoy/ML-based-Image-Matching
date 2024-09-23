@@ -131,6 +131,12 @@ def scrape_images(keyword, max_pages=5, family='creative'):
                     return
 
             save_metadata_to_json(metadata, folder_name)
+    
+    # Rename the folder by removing the "x_" prefix
+    new_folder_name = folder_name[2:]
+    os.rename(folder_name, new_folder_name)
+    print(f"Renamed folder from {folder_name} to {new_folder_name}")
+
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -139,6 +145,6 @@ if __name__ == "__main__":
     if keyword:
         # update_status_in_csv(csv_file_path, keyword, "In Progress")
         scrape_images(keyword, max_pages=200, family='editorial')
-        update_status_in_csv(csv_file_path, keyword, "Completed")
+        # update_status_in_csv(csv_file_path, keyword, "Completed")
     else:
         print("No keywords with status 'Waiting' found.")
