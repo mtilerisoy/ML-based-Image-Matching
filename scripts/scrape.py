@@ -10,10 +10,10 @@ def load_names_from_csv(file_path):
     Load keywords from a CSV file and return the first keyword with status "Waiting".
 
     Parameters:
-    - file_path (str): The path to the CSV file containing the keywords and status.
+    file_path (str): The path to the CSV file containing the keywords and status.
 
     Returns:
-    - str: The first keyword with status "Waiting".
+    str: The first keyword with status "Waiting".
     """
     with open(file_path, mode='r') as file:
         reader = csv.DictReader(file)
@@ -27,12 +27,9 @@ def update_status_in_csv(file_path, keyword, new_status):
     Update the status of a keyword in the CSV file.
 
     Parameters:
-    - file_path (str): The path to the CSV file containing the keywords and status.
-    - keyword (str): The keyword to update.
-    - new_status (str): The new status to set.
-
-    Returns:
-    - None
+    file_path (str): The path to the CSV file containing the keywords and status.
+    keyword (str): The keyword to update.
+    new_status (str): The new status to set.
     """
     rows = []
     with open(file_path, mode='r') as file:
@@ -55,17 +52,6 @@ HEADERS = {
 }
 
 def get_images_from_page(keyword, page_num, family='creative'):
-    """
-    Detects the family of the image and scrapes the images from the Getty Images website.
-
-    Parameters:
-    - keyword (str): The keyword to search for.
-    - page_num (int): The page number to scrape.
-    - family (str): The family of the image, either 'creative' or 'editorial'.
-
-    Returns:
-    - list: A list of tuples containing the image URL and alt text.
-    """
     assert family in ['creative', 'editorial'], "Family must be either 'creative' or 'editorial'"
     keyword = keyword.replace(' ', '%20')
     url = f"https://www.gettyimages.nl/search/2/image?family={family}&page={page_num}&phrase={keyword}&sort=best"
@@ -85,18 +71,6 @@ def get_images_from_page(keyword, page_num, family='creative'):
     return images_info
 
 def download_image(image_url, folder_name, keyword, image_id):
-    """
-    Downloads an image from a URL and saves it to a folder.
-
-    Parameters:
-    - image_url (str): The URL of the image to download.
-    - folder_name (str): The name of the folder to save the image.
-    - keyword (str): The keyword used to search for the image.
-    - image_id (int): The ID of the image.
-
-    Returns:
-    - str: The name of the image file saved.
-    """
     try:
         response = requests.get(image_url, stream=True)
         if response.status_code == 200:
@@ -118,33 +92,12 @@ def download_image(image_url, folder_name, keyword, image_id):
         return None
 
 def save_metadata_to_json(metadata, folder_name):
-    """
-    Saves the metadata to a JSON file.
-    
-    Parameters:
-    - metadata (dict): The metadata to save.
-    - folder_name (str): The name of the folder to save the JSON file.
-    
-    Returns:
-    - None
-    """
     json_file_path = os.path.join(folder_name, "metadata.json")
     with open(json_file_path, 'w') as json_file:
         json.dump(metadata, json_file, indent=4)
     print(f"Metadata saved to {json_file_path}")
 
 def scrape_images(keyword, max_pages=5, family='creative'):
-    """
-    Scrapes images from Getty Images based on a keyword and saves them to a folder.
-    
-    Parameters:
-    - keyword (str): The keyword to search for.
-    - max_pages (int): The maximum number of pages to scrape.
-    - family (str): The family of the image, either 'creative' or 'editorial'.
-    
-    Returns:
-    - None
-    """
     folder_name = keyword.replace(' ', '_')
     folder_name = "x_" + folder_name
     if not os.path.exists(folder_name):
@@ -152,6 +105,8 @@ def scrape_images(keyword, max_pages=5, family='creative'):
 
     image_id = 1
     metadata = {"images": []}
+    consecutive_errors = 0
+
     for page in range(1, max_pages + 1):
         print(f"Scraping page {page}")
         images_info = get_images_from_page(keyword, page, family=family)
@@ -168,6 +123,12 @@ def scrape_images(keyword, max_pages=5, family='creative'):
                     "URL": image_url
                 })
                 image_id += 1
+                consecutive_errors = 0  # Reset the error counter on successful download
+            else:
+                consecutive_errors += 1
+                if consecutive_errors >= 5:
+                    print("5 consecutive invalid URL errors encountered. Stopping the process.")
+                    return
 
             save_metadata_to_json(metadata, folder_name)
 
