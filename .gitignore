@@ -8,6 +8,9 @@ xxx*
 *.jp2
 *.jpeg
 *.png
+x_*
+*.csv
+*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
