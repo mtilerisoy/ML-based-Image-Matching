@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import json
 import csv
+import argparse
 
 def load_names_from_csv(file_path):
     """
@@ -97,7 +98,7 @@ def save_metadata_to_json(metadata, folder_name):
         json.dump(metadata, json_file, indent=4)
     print(f"Metadata saved to {json_file_path}")
 
-def scrape_images(keyword, max_pages=5, family='creative'):
+def scrape_images(keyword, max_pages=200, family='creative'):
     folder_name = keyword.replace(' ', '_')
     folder_name = "x_" + folder_name
     if not os.path.exists(folder_name):
@@ -139,12 +140,14 @@ def scrape_images(keyword, max_pages=5, family='creative'):
 
 
 if __name__ == "__main__":
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_file_path = os.path.join(script_dir, "keywords.csv")
-    keyword = load_names_from_csv(csv_file_path)
-    if keyword:
-        # update_status_in_csv(csv_file_path, keyword, "In Progress")
-        scrape_images(keyword, max_pages=200, family='editorial')
-        # update_status_in_csv(csv_file_path, keyword, "Completed")
+    parser = argparse.ArgumentParser(description="Scrape images from Getty Images.")
+    parser.add_argument("--keyword", type=str, help="The keyword to search for images.")
+    parser.add_argument("--max_pages", type=int, default=200, help="The maximum number of pages to scrape.")
+    parser.add_argument("--csv_file", type=str, default="keywords.csv", help="The path to the CSV file containing keywords.")
+    args = parser.parse_args()
+
+    keyword = args.keyword if args.keyword else load_names_from_csv(args.csv_file)
+    if not keyword:
+        print("No keyword provided and no keywords with status 'Waiting' found in the CSV file.")
     else:
-        print("No keywords with status 'Waiting' found.")
+        scrape_images(keyword, max_pages=args.max_pages, family='editorial')
