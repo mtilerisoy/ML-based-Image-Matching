@@ -7,7 +7,14 @@ import json
 import shutil
 
 async def main():
-    source_dir = "/Users/ilerisoy/Downloads/data"
+    # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Move one level up to the parent directory
+    parent_dir = os.path.dirname(script_dir)
+
+    # Construct the path to the 'data' folder
+    source_dir = os.path.join(parent_dir, 'data')
     embeddings_dir = os.path.join(source_dir, "embeddings", "embeddings.pkl")
     labels_dir = os.path.join(source_dir, "embeddings", "labels.pkl")
     images_dir = os.path.join(source_dir, "scraped")
