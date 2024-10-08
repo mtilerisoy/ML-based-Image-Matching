@@ -5,17 +5,11 @@ from datetime import datetime
 import json
 import csv
 import argparse
+import aiohttp
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 def load_names_from_csv(file_path):
-    """
-    Load keywords from a CSV file and return the first keyword with status "Waiting".
-
-    Parameters:
-    file_path (str): The path to the CSV file containing the keywords and status.
-
-    Returns:
-    str: The first keyword with status "Waiting".
-    """
     with open(file_path, mode='r') as file:
         reader = csv.DictReader(file)
         for row in reader:
@@ -24,14 +18,6 @@ def load_names_from_csv(file_path):
     return None
 
 def update_status_in_csv(file_path, keyword, new_status):
-    """
-    Update the status of a keyword in the CSV file.
-
-    Parameters:
-    file_path (str): The path to the CSV file containing the keywords and status.
-    keyword (str): The keyword to update.
-    new_status (str): The new status to set.
-    """
     rows = []
     with open(file_path, mode='r') as file:
         reader = csv.DictReader(file)
@@ -71,26 +57,29 @@ def get_images_from_page(keyword, page_num, family='creative'):
 
     return images_info
 
-def download_image(image_url, folder_name, keyword, image_id):
+async def download_image_async(session, image_url, folder_name, keyword, image_id):
     try:
-        response = requests.get(image_url, stream=True)
-        if response.status_code == 200:
-            timestamp = datetime.now().strftime("%d%m%Y")
-            keyword_modified = keyword.replace(' ', '_')
-            image_name = f"{keyword_modified}_{timestamp}_{image_id}.jpg"
-            image_path = os.path.join(folder_name, image_name)
-            
-            with open(image_path, 'wb') as file:
-                for chunk in response.iter_content(1024):
-                    file.write(chunk)
-            print(f"Downloaded: {image_name}")
-            return image_name
-        else:
-            print(f"Failed to download: {image_url}")
-            return None
+        async with session.get(image_url) as response:
+            if response.status == 200:
+                timestamp = datetime.now().strftime("%d%m%Y")
+                keyword_modified = keyword.replace(' ', '_')
+                image_name = f"{keyword_modified}_{timestamp}_{image_id}.jpg"
+                image_path = os.path.join(folder_name, image_name)
+                
+                with open(image_path, 'wb') as file:
+                    while True:
+                        chunk = await response.content.read(1024)
+                        if not chunk:
+                            break
+                        file.write(chunk)
+                print(f"Downloaded: {image_name}")
+                return image_name, image_url, None
+            else:
+                print(f"Failed to download: {image_url}")
+                return None, image_url, "Failed to download"
     except Exception as e:
         print(f"Error downloading {image_url}: {str(e)}")
-        return None
+        return None, image_url, str(e)
 
 def save_metadata_to_json(metadata, folder_name):
     json_file_path = os.path.join(folder_name, "metadata.json")
@@ -98,7 +87,7 @@ def save_metadata_to_json(metadata, folder_name):
         json.dump(metadata, json_file, indent=4)
     print(f"Metadata saved to {json_file_path}")
 
-def scrape_images(keyword, max_pages=200, family='creative'):
+async def scrape_images_async(keyword, max_pages=200, family='creative'):
     folder_name = keyword.replace(' ', '_')
     folder_name = "x_" + folder_name
     if not os.path.exists(folder_name):
@@ -108,38 +97,42 @@ def scrape_images(keyword, max_pages=200, family='creative'):
     metadata = {"images": []}
     consecutive_errors = 0
 
-    for page in range(1, max_pages + 1):
-        print(f"Scraping page {page}")
-        images_info = get_images_from_page(keyword, page, family=family)
+    async with aiohttp.ClientSession() as session:
+        for page in range(1, max_pages + 1):
+            print(f"Scraping page {page}")
+            images_info = get_images_from_page(keyword, page, family=family)
 
-        for image_url, alt_text in images_info:
-            image_name = download_image(image_url, folder_name, keyword, image_id)
-            if image_name:
-                metadata["images"].append({
-                    "filename": image_name,
-                    "caption": alt_text,
-                    "match": False,
-                    "design": "NONE",
-                    "score": 0.0,
-                    "URL": image_url
-                })
+            tasks = []
+            for image_url, alt_text in images_info:
+                tasks.append(download_image_async(session, image_url, folder_name, keyword, image_id))
                 image_id += 1
-                consecutive_errors = 0  # Reset the error counter on successful download
-            else:
-                consecutive_errors += 1
-                if consecutive_errors >= 5:
-                    print("5 consecutive invalid URL errors encountered. Stopping the process.")
-                    return
+
+            results = await asyncio.gather(*tasks)
+
+            for image_name, image_url, error in results:
+                if image_name:
+                    metadata["images"].append({
+                        "filename": image_name,
+                        "caption": alt_text,
+                        "match": False,
+                        "design": "NONE",
+                        "score": 0.0,
+                        "URL": image_url
+                    })
+                    consecutive_errors = 0  # Reset the error counter on successful download
+                else:
+                    consecutive_errors += 1
+                    if consecutive_errors >= 5:
+                        print("5 consecutive invalid URL errors encountered. Stopping the process.")
+                        return
 
             save_metadata_to_json(metadata, folder_name)
     
-    # Rename the folder by removing the "x_" prefix
     new_folder_name = folder_name[2:]
     os.rename(folder_name, new_folder_name)
     print(f"Renamed folder from {folder_name} to {new_folder_name}")
 
-
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="Scrape images from Getty Images.")
     parser.add_argument("--keyword", type=str, help="The keyword to search for images.")
     parser.add_argument("--max_pages", type=int, default=200, help="The maximum number of pages to scrape.")
@@ -150,4 +143,7 @@ if __name__ == "__main__":
     if not keyword:
         print("No keyword provided and no keywords with status 'Waiting' found in the CSV file.")
     else:
-        scrape_images(keyword, max_pages=args.max_pages, family='editorial')
+        asyncio.run(scrape_images_async(keyword, max_pages=args.max_pages, family='editorial'))
+
+if __name__ == "__main__":
+    main()

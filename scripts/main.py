@@ -1,0 +1,110 @@
+import os
+import asyncio
+from models import initialize_models
+from utils import load_design_embeddings, load_metadata_and_files_async, get_first_valid_subdirectory_async, get_info
+from processing import process_file
+import json
+import shutil
+
+async def main():
+    DEVICE = "mps"
+    source_dir = "/Users/ilerisoy/Downloads/data"
+    embeddings_dir = os.path.join(source_dir, "embeddings", "embeddings.pkl")
+    labels_dir = os.path.join(source_dir, "embeddings", "labels.pkl")
+    images_dir = os.path.join(source_dir, "scraped")
+    detected_dir = os.path.join(source_dir, "detected")
+    os.makedirs(detected_dir, exist_ok=True)
+    detected_metadata_path = os.path.join(detected_dir, "metadata.json")
+    convert_mode = "RGB"
+
+    print("Initializing models...")
+    CLIP_model, CLIP_transform, instance_seg_model, seg_processor, seg_model = initialize_models(DEVICE)
+    print("Models initialized.")
+
+    print("Loading design embeddings...")
+    design_embeddings, design_labels = load_design_embeddings(embeddings_dir, labels_dir)
+    print("Design embeddings loaded.")
+
+    print("Getting first valid subdirectory...")
+    keyword_dir = await get_first_valid_subdirectory_async(images_dir)
+    print(f"Keyword directory: {keyword_dir}")
+
+    metadata_file_path = os.path.join(keyword_dir, "metadata.json")
+    print(f"Loading metadata and files from {metadata_file_path}...")
+    metadata, sub_files = await load_metadata_and_files_async(keyword_dir, metadata_file_path)
+    detected_metadata = {"images": []}
+    print("Metadata and files loaded.")
+
+    match = 0
+    ds_store_count = 0
+    failed_files = []
+    matched_files = []
+
+    print("Processing files...")
+    tasks = []
+    for file_count, file in enumerate(sub_files):
+        if file == ".DS_Store" or file == "metadata.json":
+            ds_store_count += 1
+            continue
+        print(f"Processing file {file_count + 1}/{len(sub_files)}: {file}")
+        task = process_file(file, keyword_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform)
+        tasks.append(task)
+
+    results = await asyncio.gather(*tasks)
+    for result in results:
+        if result is None:
+            continue
+        best_score, file_match, file_failed_files, file_matched_files, top_k_design_labels = result
+        print(f"Matched files: {file_matched_files}")
+        # for matched_file in file_matched_files:
+        if file_matched_files:
+            # Initialize the source and destination paths to copy
+            source_file_path = os.path.join(keyword_dir, file_matched_files[0])
+            destination_file_path = os.path.join(detected_dir, file_matched_files[0])
+
+            # Extract the metadata info
+            image_info = get_info(metadata, file_matched_files[0])
+            print(f"Type of image info: {type(image_info)}")
+
+            # If the image info is empty, create a placeholder to update the score
+            if image_info is None:
+                image_info = {
+                'filename': file_matched_files[0],
+                'caption': "",
+                'match': "true",
+                'design': top_k_design_labels,
+                'score': 0.0,
+                'URL': ""
+                }
+            print(f"Type of image info: {type(image_info)}")
+            # Update the score field
+            image_info["score"] = best_score
+
+            # Add the info to save later
+            detected_metadata["images"].append(image_info)
+
+            # matched_files.extend(file_matched_files[0])
+            try:
+                shutil.copy2(source_file_path, destination_file_path)
+                print(f"Copied {file_matched_files[0]} to 'detected' directory.")
+            except Exception as e:
+                print(f"Failed to copy {file_matched_files[0]}: {e}")
+            
+        # if file_failed_files:
+        #     failed_files.extend(file_failed_files)
+
+        # Save the updated metadata.json
+        try:
+            with open(detected_metadata_path, "w", encoding="utf-8") as f:
+                json.dump(detected_metadata, f, indent=4)
+            print("metadata.json updated successfully in 'detected' directory.")
+        except Exception as e:
+            print(f"Failed to save metadata.json: {e}")
+    
+
+    print(f"Match: {match}/{len(sub_files)-ds_store_count}")
+    print(f"Failed files: {failed_files}")
+    print(f"Matched files: {matched_files}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
