@@ -2,7 +2,7 @@ import clip
 from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentation
 from ultralytics import YOLO
 
-def initialize_models(device):
+def initialize_models():
     # CLIP model initialization
     CLIP_model, CLIP_transform = clip.load("ViT-L/14@336px")
 
