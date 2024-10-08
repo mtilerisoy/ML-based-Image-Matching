@@ -1,5 +1,4 @@
 # Custom Files
-data/
 *.pt
 *.pth
 .DS_Store
@@ -9,7 +8,7 @@ xxx*
 *.jpeg
 *.png
 x_*
-*.csv
+# *.csv
 *.json
 
 # Byte-compiled / optimized / DLL files
