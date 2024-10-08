@@ -1,0 +1,16 @@
+aiohttp==3.8.5
+argparse
+asyncio
+beautifulsoup4==4.12.2
+bs4
+clip-anytorch==2.5.0
+cv2
+matplotlib==3.8.0
+numpy==1.25.0
+Pillow==10.0.0
+pickle5==0.0.12
+requests==2.31.0
+shutil
+torch==2.0.1
+transformers==4.31.0
+ultralytics==8.0.106
