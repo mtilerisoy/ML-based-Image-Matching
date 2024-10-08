@@ -89,7 +89,7 @@ def save_metadata_to_json(metadata, folder_name):
 
 async def scrape_images_async(keyword, max_pages=200, family='creative'):
     folder_name = keyword.replace(' ', '_')
-    folder_name = "x_" + folder_name
+    folder_name = "../data/scraped/x_" + folder_name
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
 
