@@ -7,7 +7,6 @@ import json
 import shutil
 
 async def main():
-    DEVICE = "mps"
     source_dir = "/Users/ilerisoy/Downloads/data"
     embeddings_dir = os.path.join(source_dir, "embeddings", "embeddings.pkl")
     labels_dir = os.path.join(source_dir, "embeddings", "labels.pkl")
@@ -18,7 +17,7 @@ async def main():
     convert_mode = "RGB"
 
     print("Initializing models...")
-    CLIP_model, CLIP_transform, instance_seg_model, seg_processor, seg_model = initialize_models(DEVICE)
+    CLIP_model, CLIP_transform, instance_seg_model, seg_processor, seg_model = initialize_models()
     print("Models initialized.")
 
     print("Loading design embeddings...")

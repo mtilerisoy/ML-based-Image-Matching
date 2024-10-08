@@ -10,7 +10,7 @@ import asyncio
 
 def image_encoder(image, CLIP_MODEL, CLIP_TRANSFORM):
     model = CLIP_MODEL.eval()
-    image = CLIP_TRANSFORM(image).unsqueeze(0).to("mps")
+    image = CLIP_TRANSFORM(image).unsqueeze(0)
     with torch.no_grad():
         image_features = model.encode_image(image)
     return image_features
