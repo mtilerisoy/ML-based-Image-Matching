@@ -1,12 +1,12 @@
 import os
 import asyncio
 from models import initialize_models
-from utils import load_design_embeddings, load_metadata_and_files_async, get_first_valid_subdirectory_async, get_info
+from utils import load_design_embeddings, load_metadata_and_files, get_first_valid_subdirectory, get_info
 from processing import process_file
 import json
 import shutil
 
-async def main():
+def main():
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -32,12 +32,12 @@ async def main():
     print("Design embeddings loaded.")
 
     print("Getting first valid subdirectory...")
-    keyword_dir = await get_first_valid_subdirectory_async(images_dir)
+    keyword_dir = get_first_valid_subdirectory(images_dir)
     print(f"Keyword directory: {keyword_dir}")
 
     metadata_file_path = os.path.join(keyword_dir, "metadata.json")
     print(f"Loading metadata and files from {metadata_file_path}...")
-    metadata, sub_files = await load_metadata_and_files_async(keyword_dir, metadata_file_path)
+    metadata, sub_files = load_metadata_and_files(keyword_dir, metadata_file_path)
     detected_metadata = {"images": []}
     print("Metadata and files loaded.")
 
@@ -47,20 +47,13 @@ async def main():
     matched_files = []
 
     print("Processing files...")
-    tasks = []
     for file_count, file in enumerate(sub_files):
         if file == ".DS_Store" or file == "metadata.json":
             ds_store_count += 1
             continue
         print(f"Processing file {file_count + 1}/{len(sub_files)}: {file}")
-        task = process_file(file, keyword_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform)
-        tasks.append(task)
+        best_score, file_match, file_failed_files, file_matched_files, top_k_design_labels = process_file(file, keyword_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform)
 
-    results = await asyncio.gather(*tasks)
-    for result in results:
-        if result is None:
-            continue
-        best_score, file_match, file_failed_files, file_matched_files, top_k_design_labels = result
         print(f"Matched files: {file_matched_files}")
         # for matched_file in file_matched_files:
         if file_matched_files:
@@ -113,4 +106,4 @@ async def main():
     print(f"Matched files: {matched_files}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

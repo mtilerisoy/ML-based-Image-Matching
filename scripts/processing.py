@@ -4,9 +4,7 @@ import torch
 from PIL import Image
 import cv2
 import matplotlib.pyplot as plt
-from utils import save_filtered_image_async, load_metadata_and_files_async, get_first_valid_subdirectory_async
-from concurrent.futures import ThreadPoolExecutor
-import asyncio
+# from utils import save_filtered_image_async, load_metadata_and_files_async, get_first_valid_subdirectory_async
 
 def image_encoder(image, CLIP_MODEL, CLIP_TRANSFORM):
     model = CLIP_MODEL.eval()
@@ -86,50 +84,32 @@ def check_design_label_match(top_k_design_labels, file):
             return True
     return False
 
-async def process_cropped_images(cropped_images, file, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform):
+def process_cropped_images(cropped_images, file, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform):
     best_score = 0.0
     match = 0
     failed_files = []
     matched_files = []
-    tasks = []
 
-    with ThreadPoolExecutor() as executor:
-        loop = asyncio.get_event_loop()
-        for idx, cropped_image in enumerate(cropped_images):
-            task = loop.run_in_executor(
-                executor,
-                segment_and_apply_mask,
-                cropped_image,
-                seg_processor,
-                seg_model
-            )
-            tasks.append(task)
-
-        results = await asyncio.gather(*tasks)
-
-        for cropped_image_pil, segmented_image_3ch in results:
-            if cropped_image_pil is None:
-                continue
-            avg_similarity, top_k_similarities, top_k_design_labels = calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CLIP_model, CLIP_transform)
-            if avg_similarity > 0.719:
-                matched_files.append(file)
-                match += 1
-            if avg_similarity > best_score:
-                best_score = avg_similarity
-            # if not check_design_label_match(top_k_design_labels, file):
-            #     failed_files.append(file)
-            # else:
-            #     matched_files.append(file)
-            #     match += 1
-
+    for idx, cropped_image in enumerate(cropped_images):
+        cropped_image_pil, segmented_image_3ch = segment_and_apply_mask(cropped_image, seg_processor, seg_model)
+        
+        if cropped_image_pil is None:
+            continue
+        avg_similarity, top_k_similarities, top_k_design_labels = calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CLIP_model, CLIP_transform)
+        if avg_similarity > 0.719:
+            matched_files.append(file)
+            match += 1
+        if avg_similarity > best_score:
+            best_score = avg_similarity
+            
     return best_score, match, failed_files, matched_files, top_k_design_labels
 
-async def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform):
+def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform):
     image_path = os.path.join(source_dir, file)
     image = Image.open(image_path).convert("RGB")
     image_np = np.array(image)
     cropped_images = crop_humans(image_np, instance_seg_model, show_images=False)
     if not cropped_images:
         return None, None, None, None
-    best_score, match, failed_files, matched_files, top_k_design_labels = await process_cropped_images(cropped_images, file, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform)
+    best_score, match, failed_files, matched_files, top_k_design_labels = process_cropped_images(cropped_images, file, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform)
     return best_score, match, failed_files, matched_files, top_k_design_labels
