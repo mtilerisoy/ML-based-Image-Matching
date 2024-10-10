@@ -110,6 +110,6 @@ def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model,
     image_np = np.array(image)
     cropped_images = crop_humans(image_np, instance_seg_model, show_images=False)
     if not cropped_images:
-        return None, None, None, None
+        return None, None, None, None, None
     best_score, match, failed_files, matched_files, top_k_design_labels = process_cropped_images(cropped_images, file, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform)
     return best_score, match, failed_files, matched_files, top_k_design_labels
