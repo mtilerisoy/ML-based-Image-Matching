@@ -17,6 +17,14 @@ def load_names_from_csv(file_path):
                 return row['keyword']
     return None
 
+def keyword_exists_in_csv(file_path, keyword):
+    with open(file_path, mode='r') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            if row['keyword'] == keyword:
+                return True
+    return False
+
 def update_status_in_csv(file_path, keyword, new_status):
     rows = []
     with open(file_path, mode='r') as file:
@@ -143,7 +151,14 @@ def main():
     if not keyword:
         print("No keyword provided and no keywords with status 'Waiting' found in the CSV file.")
     else:
+        keyword_in_csv = keyword_exists_in_csv(args.csv_file, keyword)
+        if keyword_in_csv:
+            update_status_in_csv(args.csv_file, keyword, "In Progress")
+        
         asyncio.run(scrape_images_async(keyword, max_pages=args.max_pages, family='editorial'))
+        
+        if keyword_in_csv:
+            update_status_in_csv(args.csv_file, keyword, "Completed")
 
 if __name__ == "__main__":
     main()
