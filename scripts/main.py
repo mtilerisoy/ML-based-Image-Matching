@@ -34,7 +34,15 @@ def main():
     print("Getting first valid subdirectory...")
     keyword_dir = get_first_valid_subdirectory(images_dir)
     print(f"Keyword directory: {keyword_dir}")
+    # Rename the folder to add 'x_' prefix
+    keyword_dir_parent = os.path.dirname(keyword_dir)
+    keyword_dir_name = os.path.basename(keyword_dir)
+    new_keyword_dir = os.path.join(keyword_dir_parent, f"x_{keyword_dir_name}")
+    os.rename(keyword_dir, new_keyword_dir)
+    keyword_dir = new_keyword_dir
+    print(f"Renamed keyword directory to: {keyword_dir}")
 
+    # Load metadata and files
     metadata_file_path = os.path.join(keyword_dir, "metadata.json")
     print(f"Loading metadata and files from {metadata_file_path}...")
     metadata, sub_files = load_metadata_and_files(keyword_dir, metadata_file_path)
@@ -104,6 +112,11 @@ def main():
     print(f"Match: {match}/{len(sub_files)-ds_store_count}")
     print(f"Failed files: {failed_files}")
     print(f"Matched files: {matched_files}")
+
+    # Rename the folder to label it as processed
+    os.rename(keyword_dir, os.path.join(keyword_dir_parent, keyword_dir_name + "_processed"))
+    print(f"Renamed keyword directory back to: {os.path.join(keyword_dir_parent, keyword_dir_name)}")
+
 
 if __name__ == "__main__":
     main()
