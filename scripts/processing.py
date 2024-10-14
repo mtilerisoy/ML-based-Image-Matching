@@ -4,6 +4,7 @@ import torch
 from PIL import Image
 import cv2
 import matplotlib.pyplot as plt
+import json
 # from utils import save_filtered_image_async, load_metadata_and_files_async, get_first_valid_subdirectory_async
 
 def image_encoder(image, CLIP_MODEL, CLIP_TRANSFORM):
