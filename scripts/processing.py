@@ -113,3 +113,52 @@ def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model,
         return None, None, None, None, None
     best_score, match, failed_files, matched_files, top_k_design_labels = process_cropped_images(cropped_images, file, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform)
     return best_score, match, failed_files, matched_files, top_k_design_labels
+
+def process_matched_files(file_matched_files, keyword_dir, detected_dir, metadata, top_k_design_labels, best_score, detected_metadata_path):
+    detected_metadata = {"images": []}
+    
+    # Load existing metadata if the file exists
+    if os.path.exists(detected_metadata_path):
+        with open(detected_metadata_path, "r", encoding="utf-8") as f:
+            detected_metadata = json.load(f)
+    
+    if file_matched_files:
+        # Initialize the source and destination paths to copy
+        source_file_path = os.path.join(keyword_dir, file_matched_files[0])
+        destination_file_path = os.path.join(detected_dir, file_matched_files[0])
+
+        # Extract the metadata info
+        image_info = get_info(metadata, file_matched_files[0])
+        print(f"Type of image info: {type(image_info)}")
+
+        # If the image info is empty, create a placeholder to update the score
+        if image_info is None:
+            image_info = {
+                'filename': file_matched_files[0],
+                'caption': "",
+                'match': "true",
+                'design': top_k_design_labels,
+                'score': 0.0,
+                'URL': ""
+            }
+        print(f"Type of image info: {type(image_info)}")
+        
+        # Update the score field
+        image_info["score"] = best_score
+
+        # Add the info to save later
+        detected_metadata["images"].append(image_info)
+
+        try:
+            shutil.copy2(source_file_path, destination_file_path)
+            print(f"Copied {file_matched_files[0]} to 'detected' directory.")
+        except Exception as e:
+            print(f"Failed to copy {file_matched_files[0]}: {e}")
+        
+    # Save the updated metadata.json
+    try:
+        with open(detected_metadata_path, "w", encoding="utf-8") as f:
+            json.dump(detected_metadata, f, indent=4)
+        print("metadata.json updated successfully in 'detected' directory.")
+    except Exception as e:
+        print(f"Failed to save metadata.json: {e}")
