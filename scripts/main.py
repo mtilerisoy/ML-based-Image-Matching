@@ -114,7 +114,7 @@ def main():
     print(f"Matched files: {matched_files}")
 
     # Rename the folder to label it as processed
-    os.rename(keyword_dir, os.path.join(keyword_dir_parent, keyword_dir_name + "_processed"))
+    os.rename(keyword_dir, os.path.join(keyword_dir_parent, keyword_dir + "_processed"))
     print(f"Renamed keyword directory back to: {os.path.join(keyword_dir_parent, keyword_dir_name)}")
 
 
