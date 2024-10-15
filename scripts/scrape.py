@@ -132,8 +132,7 @@ async def scrape_images_async(keyword, max_pages=200, family='creative'):
                 else:
                     consecutive_errors += 1
                     if consecutive_errors >= 10:
-                        print("5 consecutive invalid URL errors encountered. Moving to the next keyword.")
-                        return False
+                        print("10 consecutive invalid URL errors encountered. Moving to the next keyword.")
 
             save_metadata_to_json(metadata, folder_name)
     
