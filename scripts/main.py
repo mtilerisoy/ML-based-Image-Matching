@@ -15,7 +15,7 @@ def main():
         source_dir = os.path.join(parent_dir, 'data')
         embeddings_dir = os.path.join(source_dir, "embeddings", "embeddings.pkl")
         labels_dir = os.path.join(source_dir, "embeddings", "labels.pkl")
-        scraped_images_dir = os.path.join(source_dir, "validation")
+        scraped_images_dir = os.path.join(source_dir, "scraped")
         detected_dir = os.path.join(source_dir, "detected")
         os.makedirs(detected_dir, exist_ok=True)
         detected_metadata_path = os.path.join(detected_dir, "metadata.json")
