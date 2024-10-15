@@ -103,7 +103,7 @@ async def scrape_images_async(keyword, max_pages=200, family='creative'):
         os.makedirs(folder_name)
 
     image_id = 1
-    metadata = {"images": []}
+    metadata = {}
     consecutive_errors = 0
 
     async with aiohttp.ClientSession() as session:
@@ -120,14 +120,14 @@ async def scrape_images_async(keyword, max_pages=200, family='creative'):
 
             for image_name, image_url, error in results:
                 if image_name:
-                    metadata["images"].append({
+                    metadata[image_name] = {
                         "filename": image_name,
                         "caption": alt_text,
                         "match": False,
-                        "design": "NONE",
+                        "design": [],
                         "score": 0.0,
                         "URL": image_url
-                    })
+                    }
                     consecutive_errors = 0  # Reset the error counter on successful download
                 else:
                     consecutive_errors += 1
