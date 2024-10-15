@@ -76,6 +76,9 @@ def main():
                 # Copy matched files to the detected directory and update metadata
                 copy_matched_files_and_update_metadata(result.matched_files, image_dir, detected_dir, metadata_info)
 
+                # Clear intermediate results to free up memory
+                del result
+
         # Rename the folder to label it as processed
         processed_dir = os.path.join(image_dir_parent, f"x_{image_dir_name}_processed")
         if not os.path.exists(processed_dir):
