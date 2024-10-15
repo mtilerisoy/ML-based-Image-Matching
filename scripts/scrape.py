@@ -10,12 +10,13 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 def load_names_from_csv(file_path):
+    keywords = []
     with open(file_path, mode='r') as file:
         reader = csv.DictReader(file)
         for row in reader:
             if row['status'] == 'Waiting':
-                return row['keyword']
-    return None
+                keywords.append(row['keyword'])
+    return keywords
 
 def keyword_exists_in_csv(file_path, keyword):
     with open(file_path, mode='r') as file:
@@ -97,7 +98,7 @@ def save_metadata_to_json(metadata, folder_name):
 
 async def scrape_images_async(keyword, max_pages=200, family='creative'):
     folder_name = keyword.replace(' ', '_')
-    folder_name = "../data/scraped/x_" + folder_name
+    folder_name = os.path.join("..", "data", "scraped", "x_" + folder_name)
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
 
@@ -136,9 +137,12 @@ async def scrape_images_async(keyword, max_pages=200, family='creative'):
 
             save_metadata_to_json(metadata, folder_name)
     
-    new_folder_name = folder_name[2:]
-    os.rename(folder_name, new_folder_name)
-    print(f"Renamed folder from {folder_name} to {new_folder_name}")
+    new_folder_name = folder_name.replace("x_", "", 1)
+    if os.path.exists(folder_name):
+        os.rename(folder_name, new_folder_name)
+        print(f"Renamed folder from {folder_name} to {new_folder_name}")
+    else:
+        print(f"Folder {folder_name} does not exist, cannot rename.")
 
 def main():
     parser = argparse.ArgumentParser(description="Scrape images from Getty Images.")
@@ -147,18 +151,23 @@ def main():
     parser.add_argument("--csv_file", type=str, default="keywords.csv", help="The path to the CSV file containing keywords.")
     args = parser.parse_args()
 
-    keyword = args.keyword if args.keyword else load_names_from_csv(args.csv_file)
-    if not keyword:
-        print("No keyword provided and no keywords with status 'Waiting' found in the CSV file.")
+    if args.keyword:
+        keywords = [args.keyword]
     else:
-        keyword_in_csv = keyword_exists_in_csv(args.csv_file, keyword)
-        if keyword_in_csv:
-            update_status_in_csv(args.csv_file, keyword, "In Progress")
-        
-        asyncio.run(scrape_images_async(keyword, max_pages=args.max_pages, family='editorial'))
-        
-        if keyword_in_csv:
-            update_status_in_csv(args.csv_file, keyword, "Completed")
+        keywords = load_names_from_csv(args.csv_file)
+    
+    if not keywords:
+        print("No keywords provided and no keywords with status 'Waiting' found in the CSV file.")
+    else:
+        for keyword in keywords:
+            keyword_in_csv = keyword_exists_in_csv(args.csv_file, keyword)
+            if keyword_in_csv:
+                update_status_in_csv(args.csv_file, keyword, "In Progress")
+            
+            asyncio.run(scrape_images_async(keyword, max_pages=args.max_pages, family='editorial'))
+            
+            if keyword_in_csv:
+                update_status_in_csv(args.csv_file, keyword, "Completed")
 
 if __name__ == "__main__":
     main()
