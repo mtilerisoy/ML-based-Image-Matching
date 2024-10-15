@@ -129,13 +129,14 @@ def process_cropped_images(cropped_images, seg_processor, seg_model, design_embe
     """
     best_score = 0.0
     match = 0
+    top_k_design_labels = []
 
     for idx, cropped_image in enumerate(cropped_images):
         try:
             cropped_image_pil, _ = segment_and_apply_mask(cropped_image, seg_processor, seg_model)
             if cropped_image_pil is None:
                 continue
-            avg_similarity, top_k_similarities, top_k_design_labels = calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CLIP_model, CLIP_transform)
+            avg_similarity, _, top_k_design_labels = calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CLIP_model, CLIP_transform)
             if avg_similarity >= threshold:
                 match += 1
             if avg_similarity > best_score:
@@ -143,7 +144,10 @@ def process_cropped_images(cropped_images, seg_processor, seg_model, design_embe
         except Exception as e:
             print(f"Error processing file: {e}")
             continue
-            
+        finally:
+            # Clear intermediate results to free up memory
+            del cropped_image_pil, avg_similarity, _
+
     return ProcessResult(best_score, match, [], top_k_design_labels)
 
 def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, CLIP_model, CLIP_transform, threshold=0.72):
