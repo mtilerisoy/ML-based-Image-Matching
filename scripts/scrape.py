@@ -131,8 +131,6 @@ async def scrape_images_async(keyword, max_pages=200, family='creative'):
                     consecutive_errors = 0  # Reset the error counter on successful download
                 else:
                     consecutive_errors += 1
-                    if consecutive_errors >= 10:
-                        print("10 consecutive invalid URL errors encountered. Moving to the next keyword.")
 
             save_metadata_to_json(metadata, folder_name)
     
@@ -143,7 +141,12 @@ async def scrape_images_async(keyword, max_pages=200, family='creative'):
     else:
         print(f"Folder {folder_name} does not exist, cannot rename.")
     
-    return True
+    if consecutive_errors > 9:
+        print(f"Terminating scraping for {keyword} due to too many consecutive errors.")
+        return False
+    
+    else:
+        return True
 
 def main():
     parser = argparse.ArgumentParser(description="Scrape images from Getty Images.")
