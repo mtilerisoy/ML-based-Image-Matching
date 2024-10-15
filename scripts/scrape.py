@@ -131,9 +131,9 @@ async def scrape_images_async(keyword, max_pages=200, family='creative'):
                     consecutive_errors = 0  # Reset the error counter on successful download
                 else:
                     consecutive_errors += 1
-                    if consecutive_errors >= 5:
-                        print("5 consecutive invalid URL errors encountered. Stopping the process.")
-                        return
+                    if consecutive_errors >= 10:
+                        print("5 consecutive invalid URL errors encountered. Moving to the next keyword.")
+                        return False
 
             save_metadata_to_json(metadata, folder_name)
     
@@ -143,6 +143,8 @@ async def scrape_images_async(keyword, max_pages=200, family='creative'):
         print(f"Renamed folder from {folder_name} to {new_folder_name}")
     else:
         print(f"Folder {folder_name} does not exist, cannot rename.")
+    
+    return True
 
 def main():
     parser = argparse.ArgumentParser(description="Scrape images from Getty Images.")
@@ -164,10 +166,11 @@ def main():
             if keyword_in_csv:
                 update_status_in_csv(args.csv_file, keyword, "In Progress")
             
-            asyncio.run(scrape_images_async(keyword, max_pages=args.max_pages, family='editorial'))
+            success = asyncio.run(scrape_images_async(keyword, max_pages=args.max_pages, family='editorial'))
             
             if keyword_in_csv:
-                update_status_in_csv(args.csv_file, keyword, "Completed")
+                new_status = "Completed" if success else "Failed"
+                update_status_in_csv(args.csv_file, keyword, new_status)
 
 if __name__ == "__main__":
     main()
