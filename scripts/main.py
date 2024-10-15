@@ -15,7 +15,7 @@ def main():
         source_dir = os.path.join(parent_dir, 'data')
         embeddings_dir = os.path.join(source_dir, "embeddings", "embeddings.pkl")
         labels_dir = os.path.join(source_dir, "embeddings", "labels.pkl")
-        scraped_images_dir = os.path.join(source_dir, "scraped")
+        scraped_images_dir = os.path.join(source_dir, "validation")
         detected_dir = os.path.join(source_dir, "detected")
         os.makedirs(detected_dir, exist_ok=True)
         detected_metadata_path = os.path.join(detected_dir, "metadata.json")
@@ -31,7 +31,6 @@ def main():
         print("Getting first valid subdirectory...")
         image_dir = get_first_valid_subdirectory(scraped_images_dir)
         print(f"Keyword directory: {image_dir}")
-        
 
         # Load metadata and files
         metadata_file_path = os.path.join(image_dir, "metadata.json")
@@ -54,8 +53,6 @@ def main():
 
         # Initialize variables to keep track of the number of matches and failed files
         match = 0
-        matched_files = []
-        matched_scores = []
 
         print("Processing files...")
         for file_count, file in enumerate(sub_image_files):
@@ -65,21 +62,19 @@ def main():
             result = process_file(file, image_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, CLIP_model, CLIP_transform)
             
             if result and result.match > 0:
-                matched_files.extend(result.matched_files)
-                matched_scores.append(result.best_score)
                 match += 1
                 print(f"Match found for file: {file} | Match count: {match}/{len_sub_files}")
 
-        # Create metadata_info dictionary
-        metadata_info = {
-            "scraped_metadata": metadata,
-            "detected_metadata_file": detected_metadata_path,
-            "matched_scores": matched_scores,
-            "matched_labels": design_labels
-        }
+                # Create metadata_info dictionary
+                metadata_info = {
+                    "scraped_metadata": metadata,
+                    "detected_metadata_file": detected_metadata_path,
+                    "matched_scores": [result.best_score],
+                    "matched_labels": result.top_k_design_labels
+                }
 
-        # Copy matched files to the detected directory and update metadata
-        copy_matched_files_and_update_metadata(matched_files, image_dir, detected_dir, metadata_info)
+                # Copy matched files to the detected directory and update metadata
+                copy_matched_files_and_update_metadata(result.matched_files, image_dir, detected_dir, metadata_info)
 
         # Rename the folder to label it as processed
         processed_dir = os.path.join(image_dir_parent, f"x_{image_dir_name}_processed")
