@@ -5,7 +5,7 @@ from PIL import Image
 import cv2
 import matplotlib.pyplot as plt
 import json
-from utils import get_info
+from utils import open_and_convert_image
 
 def image_encoder(image, CLIP_MODEL, CLIP_TRANSFORM):
     model = CLIP_MODEL.eval()
@@ -69,97 +69,153 @@ def segment_and_apply_mask(cropped_image, seg_processor, seg_model):
         cropped_image_pil = Image.fromarray(filtered_image_np, mode='RGB').convert("RGB")
     return cropped_image_pil, segmented_image_3ch
 
-def calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CLIP_model, CLIP_transform):
+from dataclasses import dataclass
+import os
+import shutil
+
+@dataclass
+class ProcessResult:
+    best_score: float
+    match: int
+    matched_files: list
+    top_k_design_labels: list
+
+def calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CLIP_model, CLIP_transform, k=5):
+    """
+    Function to calculate the similarity between the cropped image and the design embeddings and return the top k similar designs.
+
+    Parameters:
+    - cropped_image_pil: PIL image of the cropped human image
+    - design_embeddings: List of design embeddings
+    - design_labels: List of design labels
+    - CLIP_model: CLIP model
+    - CLIP_transform: CLIP transform
+    - k: Number of top similar designs to return
+
+    Returns:
+    - avg_similarity: Average similarity score for top-k the design embeddings
+    - sorted_similarities: Similarity scores in descending order
+    - sorted_design_labels: Design labels corresponding to the similarity scores
+    """
     image_features = image_encoder(cropped_image_pil, CLIP_model, CLIP_transform)
     similarities = [torch.nn.functional.cosine_similarity(image_features, t) for t in design_embeddings]
     similarities = torch.Tensor(similarities)
-    k = 5
-    sorted_similarities = similarities.topk(k*2)
-    sorted_design_labels = [design_labels[i] for i in sorted_similarities.indices]
-    avg_similarity = sorted_similarities.values[:k].mean().item()
-    return avg_similarity, sorted_similarities.values[:k], sorted_design_labels
+    
+    # Sort the similarities and design labels in descending order
+    sorted_similarities, sorted_indices = torch.sort(similarities, descending=True)
+    sorted_design_labels = [design_labels[i] for i in sorted_indices]
+    
+    # Calculate the average similarity score for the top-k designs
+    avg_similarity = sorted_similarities[:k].mean().item()
+    return avg_similarity, sorted_similarities[:k], sorted_design_labels
 
-def check_design_label_match(top_k_design_labels, file):
-    for design_label in top_k_design_labels:
-        if design_label[:6] == file[:6]:
-            return True
-    return False
+def process_cropped_images(cropped_images, seg_processor, seg_model, design_embeddings, design_labels, CLIP_model, CLIP_transform, threshold=0.72):
+    """
+    Processes a list of cropped images to find the best matching design based on similarity scores.
 
-def process_cropped_images(cropped_images, file, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform):
+    Args:
+    - cropped_images (list): List of cropped images to be processed.
+    - seg_processor (object): The segmentation processor used to segment images.
+    - seg_model (object): The segmentation model used to segment images.
+    - design_embeddings (list): List of design embeddings for similarity comparison.
+    - design_labels (list): List of labels corresponding to the design embeddings.
+    - CLIP_model (object): The CLIP model used for calculating similarity.
+    - CLIP_transform (object): The transformation applied to images before similarity calculation.
+    - threshold (float): The similarity threshold for matching.
+
+    Returns:
+    - ProcessResult: An object containing the best score, match count, failed files, matched files, and top K design labels.
+    """
     best_score = 0.0
     match = 0
-    failed_files = []
-    matched_files = []
 
     for idx, cropped_image in enumerate(cropped_images):
-        cropped_image_pil, segmented_image_3ch = segment_and_apply_mask(cropped_image, seg_processor, seg_model)
-        
-        if cropped_image_pil is None:
+        try:
+            cropped_image_pil, _ = segment_and_apply_mask(cropped_image, seg_processor, seg_model)
+            if cropped_image_pil is None:
+                continue
+            avg_similarity, top_k_similarities, top_k_design_labels = calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CLIP_model, CLIP_transform)
+            if avg_similarity >= threshold:
+                match += 1
+            if avg_similarity > best_score:
+                best_score = avg_similarity
+        except Exception as e:
+            print(f"Error processing file: {e}")
             continue
-        avg_similarity, top_k_similarities, top_k_design_labels = calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CLIP_model, CLIP_transform)
-        if avg_similarity > 0.719:
-            matched_files.append(file)
-            match += 1
-        if avg_similarity > best_score:
-            best_score = avg_similarity
             
-    return best_score, match, failed_files, matched_files, top_k_design_labels
+    return ProcessResult(best_score, match, [], top_k_design_labels)
 
-def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform):
+def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, CLIP_model, CLIP_transform, threshold=0.72):
+    """
+    Processes a single file to find the best matching design based on similarity scores.
+
+    Args:
+    - file (str): The file name to be processed.
+    - source_dir (str): The directory where the file is located.
+    - instance_seg_model (object): The instance segmentation model used to crop humans from the image.
+    - seg_processor (object): The segmentation processor used to segment images.
+    - seg_model (object): The segmentation model used to segment images.
+    - design_embeddings (list): List of design embeddings for similarity comparison.
+    - design_labels (list): List of labels corresponding to the design embeddings.
+    - CLIP_model (object): The CLIP model used for calculating similarity.
+    - CLIP_transform (object): The transformation applied to images before similarity calculation.
+    - threshold (float): The similarity threshold for matching.
+
+    Returns:
+    - ProcessResult: An object containing the best score, match count, failed files, matched files, and top K design labels.
+    - If no cropped images are found, returns None.
+    """
     image_path = os.path.join(source_dir, file)
-    image = Image.open(image_path).convert("RGB")
-    image_np = np.array(image)
+    image_np = open_and_convert_image(image_path)
     cropped_images = crop_humans(image_np, instance_seg_model, show_images=False)
     if not cropped_images:
-        return None, None, None, None, None
-    best_score, match, failed_files, matched_files, top_k_design_labels = process_cropped_images(cropped_images, file, seg_processor, seg_model, design_embeddings, design_labels, metadata, CLIP_model, CLIP_transform)
-    return best_score, match, failed_files, matched_files, top_k_design_labels
+        return None
+    result = process_cropped_images(cropped_images, seg_processor, seg_model, design_embeddings, design_labels, CLIP_model, CLIP_transform, threshold)
+    if result.match > 0:
+        result.matched_files.append(file)
+    return result
 
-def process_matched_files(file_matched_files, keyword_dir, detected_dir, metadata, top_k_design_labels, best_score, detected_metadata_path):
-    detected_metadata = {"images": []}
-    
-    # Load existing metadata if the file exists
-    if os.path.exists(detected_metadata_path):
-        with open(detected_metadata_path, "r", encoding="utf-8") as f:
-            detected_metadata = json.load(f)
-    
-    if file_matched_files:
-        # Initialize the source and destination paths to copy
-        source_file_path = os.path.join(keyword_dir, file_matched_files[0])
-        destination_file_path = os.path.join(detected_dir, file_matched_files[0])
+def copy_matched_files(matched_files, source_dir, target_dir, scraped_metadata, detected_metadata_file, matched_scores):
+    """
+    Copies matched files to a target directory.
 
-        # Extract the metadata info
-        image_info = get_info(metadata, file_matched_files[0])
-        print(f"Type of image info: {type(image_info)}")
+    Args:
+    - matched_files (list): List of matched file names.
+    - source_dir (str): The source directory where the files are located.
+    - target_dir (str): The target directory where the files will be copied.
+    """
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+    for file in matched_files:
+        shutil.copy(os.path.join(source_dir, file), target_dir)
+        update_metadata(scraped_metadata, matched_files, detected_metadata_file, matched_scores)
 
-        # If the image info is empty, create a placeholder to update the score
-        if image_info is None:
-            image_info = {
-                'filename': file_matched_files[0],
-                'caption': "",
-                'match': "true",
-                'design': top_k_design_labels,
-                'score': 0.0,
-                'URL': ""
-            }
-        print(f"Type of image info: {type(image_info)}")
-        
-        # Update the score field
-        image_info["score"] = best_score
+def update_metadata(scraped_metadata, matched_files, detected_metadata_file, matched_scores):
+    """
+    Updates the metadata file with the matched files.
 
-        # Add the info to save later
-        detected_metadata["images"].append(image_info)
+    Args:
+    - scraped_metadata (dict): The scraped metadata dictionary.
+    - matched_files (list): List of matched file names.
+    - detected_metadata_file (str): The path to the detected metadata file.
+    """
+    # Load existing detected metadata
+    if os.path.exists(detected_metadata_file):
+        with open(detected_metadata_file, 'r') as file:
+            detected_metadata = json.load(file)
+    else:
+        detected_metadata = {}
 
+    # Update detected metadata with matched files
+    for file, score in zip(matched_files, matched_scores):
         try:
-            shutil.copy2(source_file_path, destination_file_path)
-            print(f"Copied {file_matched_files[0]} to 'detected' directory.")
+            detected_metadata[file] = scraped_metadata[file]
+            detected_metadata[file]['score'] = score
         except Exception as e:
-            print(f"Failed to copy {file_matched_files[0]}: {e}")
-        
-    # Save the updated metadata.json
-    try:
-        with open(detected_metadata_path, "w", encoding="utf-8") as f:
-            json.dump(detected_metadata, f, indent=4)
-        print("metadata.json updated successfully in 'detected' directory.")
-    except Exception as e:
-        print(f"Failed to save metadata.json: {e}")
+            print(f"Error updating metadata: {e}")
+            continue
+
+    # Save updated detected metadata to the file
+    with open(detected_metadata_file, 'w') as file:
+        json.dump(detected_metadata, file, indent=4)
+    print(f"Metadata updated and saved to {detected_metadata_file}")

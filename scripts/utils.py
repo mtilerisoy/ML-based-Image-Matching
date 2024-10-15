@@ -4,6 +4,19 @@ import json
 import numpy as np
 from PIL import Image
 
+def open_and_convert_image(file_path):
+    """
+    Opens an image file and converts it to a NumPy array.
+
+    Args:
+        file_path (str): The path to the image file.
+
+    Returns:
+        np.ndarray: The image as a NumPy array.
+    """
+    image = Image.open(file_path).convert("RGB")
+    return np.array(image)
+
 def load_design_embeddings(embeddings_path, labels_path=None):
     with open(embeddings_path, 'rb') as f:
         design_embeddings = pickle.load(f)
@@ -20,7 +33,7 @@ def save_filtered_image(cropped_image_pil, data_dir, file, idx):
         os.makedirs(save_folder)
     cropped_image_pil.save(os.path.join(save_folder, f"{file[:-4]}_{idx}_filtered.jpg"))
 
-def load_metadata_and_files(source_dir, metadata_file_path):
+def load_metadata_and_images(source_dir, metadata_file_path):
     with open(metadata_file_path, 'r') as f:
         metadata = json.load(f)
     sub_files = os.listdir(source_dir)
@@ -41,3 +54,9 @@ def get_info(metadata, target_filename):
     for image_info in metadata.get("images", []):
         if image_info.get("filename") == target_filename:
             return image_info
+
+def check_design_label_match(top_k_design_labels, file):
+    for design_label in top_k_design_labels:
+        if design_label[:6] == file[:6]:
+            return True
+    return False
