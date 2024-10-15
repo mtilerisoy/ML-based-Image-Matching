@@ -175,30 +175,29 @@ def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model,
         result.matched_files.append(file)
     return result
 
-def copy_matched_files(matched_files, source_dir, target_dir, scraped_metadata, detected_metadata_file, matched_scores):
+import os
+import shutil
+import json
+
+def copy_matched_files_and_update_metadata(matched_files, source_dir, target_dir, metadata_info):
     """
-    Copies matched files to a target directory.
+    Copies matched files to a target directory and updates the metadata.
 
     Args:
     - matched_files (list): List of matched file names.
     - source_dir (str): The source directory where the files are located.
     - target_dir (str): The target directory where the files will be copied.
+    - metadata_info (dict): Dictionary containing scraped metadata, detected metadata file path, matched scores, and matched labels.
     """
+    scraped_metadata = metadata_info['scraped_metadata']
+    detected_metadata_file = metadata_info['detected_metadata_file']
+    matched_scores = metadata_info['matched_scores']
+    matched_labels = metadata_info['matched_labels']
+
+    # Ensure the target directory exists
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
-    for file in matched_files:
-        shutil.copy(os.path.join(source_dir, file), target_dir)
-        update_metadata(scraped_metadata, matched_files, detected_metadata_file, matched_scores)
 
-def update_metadata(scraped_metadata, matched_files, detected_metadata_file, matched_scores):
-    """
-    Updates the metadata file with the matched files.
-
-    Args:
-    - scraped_metadata (dict): The scraped metadata dictionary.
-    - matched_files (list): List of matched file names.
-    - detected_metadata_file (str): The path to the detected metadata file.
-    """
     # Load existing detected metadata
     if os.path.exists(detected_metadata_file):
         with open(detected_metadata_file, 'r') as file:
@@ -206,14 +205,21 @@ def update_metadata(scraped_metadata, matched_files, detected_metadata_file, mat
     else:
         detected_metadata = {}
 
-    # Update detected metadata with matched files
+    # Copy files and update metadata
     for file, score in zip(matched_files, matched_scores):
         try:
+            # Copy the file to the target directory
+            shutil.copy(os.path.join(source_dir, file), target_dir)
+
+            # Update the metadata
             detected_metadata[file] = scraped_metadata[file]
             detected_metadata[file]['score'] = score
+            detected_metadata[file]['design'] = matched_labels
+
+        except KeyError:
+            print(f"File {file} not found in scraped metadata.")
         except Exception as e:
-            print(f"Error updating metadata: {e}")
-            continue
+            print(f"Error updating metadata for file {file}: {e}")
 
     # Save updated detected metadata to the file
     with open(detected_metadata_file, 'w') as file:
