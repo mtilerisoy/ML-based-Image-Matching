@@ -5,6 +5,7 @@ from PIL import Image
 import cv2
 import matplotlib.pyplot as plt
 import json
+import shutil
 from utils import open_and_convert_image
 
 def image_encoder(image, CLIP_MODEL, CLIP_TRANSFORM):
@@ -107,7 +108,7 @@ def calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CL
     
     # Calculate the average similarity score for the top-k designs
     avg_similarity = sorted_similarities[:k].mean().item()
-    return avg_similarity, sorted_similarities[:k], sorted_design_labels
+    return avg_similarity, sorted_similarities[:k], sorted_design_labels[:k]
 
 def process_cropped_images(cropped_images, seg_processor, seg_model, design_embeddings, design_labels, CLIP_model, CLIP_transform, threshold=0.72):
     """
@@ -174,10 +175,6 @@ def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model,
     if result.match > 0:
         result.matched_files.append(file)
     return result
-
-import os
-import shutil
-import json
 
 def copy_matched_files_and_update_metadata(matched_files, source_dir, target_dir, metadata_info):
     """
