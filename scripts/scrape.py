@@ -9,6 +9,8 @@ import aiohttp
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
+#TODO: Check for the existence of the folder before renaming/coppying
+
 def load_names_from_csv(file_path):
     keywords = []
     with open(file_path, mode='r') as file:
@@ -99,8 +101,14 @@ def save_metadata_to_json(metadata, folder_name):
 async def scrape_images_async(keyword, max_pages=200, family='creative'):
     folder_name = keyword.replace(' ', '_')
     folder_name = os.path.join("..", "data", "scraped", "x_" + folder_name)
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
+    new_folder_name = folder_name.replace("x_", "", 1)
+
+    # Check if folder_name or new_folder_name exists
+    if os.path.exists(folder_name) or os.path.exists(new_folder_name):
+        print(f"Folder {folder_name} or {new_folder_name} already exists. Skipping keyword: {keyword}")
+        return False
+
+    os.makedirs(folder_name)
 
     image_id = 1
     metadata = {}
@@ -140,7 +148,6 @@ async def scrape_images_async(keyword, max_pages=200, family='creative'):
 
             save_metadata_to_json(metadata, folder_name)
     
-    new_folder_name = folder_name.replace("x_", "", 1)
     if os.path.exists(folder_name):
         os.rename(folder_name, new_folder_name)
         print(f"Renamed folder from {folder_name} to {new_folder_name}")
