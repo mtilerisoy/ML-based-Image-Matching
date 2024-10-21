@@ -1,21 +1,46 @@
 import os
 import numpy as np
 import torch
+import torchvision
+import clip
 from PIL import Image
 import cv2
 import matplotlib.pyplot as plt
 import json
 import shutil
 from utils import open_and_convert_image
+from ultralytics.models.yolo.model import YOLO
+from transformers.models.segformer.image_processing_segformer import SegformerImageProcessor
+from transformers.models.segformer.modeling_segformer import SegformerForSemanticSegmentation
 
-def image_encoder(image, CLIP_MODEL, CLIP_TRANSFORM):
+def image_encoder(image: Image.Image, CLIP_MODEL: clip.model.CLIP, CLIP_TRANSFORM: torchvision.transforms.Compose):
+    """
+    Function to encode an image using the CLIP model.
+    
+    Parameters:
+    - image: Image to encode (PIL Image)
+    - CLIP_MODEL: CLIP model
+    - CLIP_TRANSFORM: CLIP transform
+    
+    Returns:
+    - image_features: Encoded image features
+    """
     image = CLIP_TRANSFORM(image).unsqueeze(0)
     with torch.no_grad():
         image_features = CLIP_MODEL.encode_image(image)
     return image_features
 
-def crop_humans(image, CROP_HUMAN_MODEL, show_images=False):
-    # assert isinstance(image, np.ndarray), "Image must be a numpy array."
+def crop_humans(image: np.ndarray, CROP_HUMAN_MODEL: YOLO):
+    """
+    Function to crop humans from an image using YOLO detection model.
+    
+    Parameters:
+    - image: Image to crop humans from (NumPy array)
+    - CROP_HUMAN_MODEL: YOLO detection model
+    
+    Returns:
+    - cropped_images: List of cropped human images
+    """
     result = CROP_HUMAN_MODEL(image, verbose=False)[0]
     boxes = result.boxes
     masks = result.masks
@@ -35,13 +60,20 @@ def crop_humans(image, CROP_HUMAN_MODEL, show_images=False):
             masked_image = cv2.bitwise_and(image, image, mask=blank_mask)
             cropped_masked_img = masked_image[y1:y2, x1:x2]
             cropped_images.append(cropped_masked_img)
-            # if show_images:
-            #     plt.imshow(cv2.cvtColor(cropped_masked_img, cv2.COLOR_BGR2RGB))
-            #     plt.axis('off')
-            #     plt.show()
     return cropped_images
 
-def segment_clothes(image, SEGMENT_CLOTH_PROCESSOR, SEGMENT_CLOTH_MODEL):
+def segment_clothes(image: Image.Image, SEGMENT_CLOTH_PROCESSOR: SegformerImageProcessor, SEGMENT_CLOTH_MODEL: SegformerForSemanticSegmentation):
+    """
+    Function to segment clothes from an image using a segmentation model.
+    
+    Parameters:
+    - image: Image to segment clothes from (PIL Image)
+    - SEGMENT_CLOTH_PROCESSOR: SegformerImageProcessor
+    - SEGMENT_CLOTH_MODEL: SegformerForSemanticSegmentation
+    
+    Returns:
+    - pred_seg: Segmented image
+    """
     inputs = SEGMENT_CLOTH_PROCESSOR(images=image, return_tensors="pt")
     outputs = SEGMENT_CLOTH_MODEL(**inputs)
     logits = outputs.logits.cpu()
@@ -53,7 +85,18 @@ def segment_clothes(image, SEGMENT_CLOTH_PROCESSOR, SEGMENT_CLOTH_MODEL):
     pred_seg[mask] = 255
     return pred_seg
 
-def segment_and_apply_mask(cropped_image, seg_processor, seg_model):
+def segment_and_apply_mask(cropped_image: np.ndarray, seg_processor: SegformerImageProcessor, seg_model: SegformerForSemanticSegmentation):
+    """
+    Function to segment clothes from a cropped image and apply a mask to filter out the background.
+    
+    Parameters:
+    - cropped_image: Cropped image to segment and apply mask to (NumPy array)
+    - seg_processor: SegformerImageProcessor
+    - seg_model: SegformerForSemanticSegmentation
+    
+    Returns:
+    - cropped_image_pil: Cropped image with mask applied (PIL Image)
+    """
     cropped_image_pil = Image.fromarray(cropped_image, mode='RGB')
     segmented_image = segment_clothes(cropped_image_pil, seg_processor, seg_model)
     segmented_image = segmented_image.cpu().numpy().astype(np.uint8)
@@ -67,7 +110,7 @@ def segment_and_apply_mask(cropped_image, seg_processor, seg_model):
         cropped_image_pil = Image.fromarray(cropped_image, mode='RGB')
     else:
         cropped_image_pil = Image.fromarray(filtered_image_np, mode='RGB').convert("RGB")
-    return cropped_image_pil, segmented_image_3ch
+    return cropped_image_pil
 
 from dataclasses import dataclass
 import os
@@ -80,7 +123,7 @@ class ProcessResult:
     matched_files: list
     top_k_design_labels: list
 
-def calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CLIP_model, CLIP_transform, k=5):
+def calculate_similarity(cropped_image_pil: Image.Image, design_embeddings: list, design_labels: list, CLIP_model: clip.model.CLIP, CLIP_transform: torchvision.transforms.Compose, k=5):
     """
     Function to calculate the similarity between the cropped image and the design embeddings and return the top k similar designs.
 
@@ -109,11 +152,11 @@ def calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CL
     avg_similarity = sorted_similarities[:k].mean().item()
     return avg_similarity, sorted_similarities[:k], sorted_design_labels[:k]
 
-def process_cropped_images(cropped_images, seg_processor, seg_model, design_embeddings, design_labels, CLIP_model, CLIP_transform, threshold=0.72):
+def process_cropped_images(cropped_images: list, seg_processor: SegformerImageProcessor, seg_model: SegformerForSemanticSegmentation, design_embeddings: list, design_labels: list, CLIP_model: clip.model.CLIP, CLIP_transform: torchvision.transforms.Compose, threshold=0.72):
     """
     Processes a list of cropped images to find the best matching design based on similarity scores.
 
-    Args:
+    Parameters:
     - cropped_images (list): List of cropped images to be processed.
     - seg_processor (object): The segmentation processor used to segment images.
     - seg_model (object): The segmentation model used to segment images.
@@ -132,7 +175,7 @@ def process_cropped_images(cropped_images, seg_processor, seg_model, design_embe
 
     for idx, cropped_image in enumerate(cropped_images):
         try:
-            cropped_image_pil, _ = segment_and_apply_mask(cropped_image, seg_processor, seg_model)
+            cropped_image_pil = segment_and_apply_mask(cropped_image, seg_processor, seg_model)
             if cropped_image_pil is None:
                 continue
             avg_similarity, _, top_k_design_labels = calculate_similarity(cropped_image_pil, design_embeddings, design_labels, CLIP_model, CLIP_transform)
@@ -143,17 +186,14 @@ def process_cropped_images(cropped_images, seg_processor, seg_model, design_embe
         except Exception as e:
             print(f"Error processing file: {e}")
             continue
-        finally:
-            # Clear intermediate results to free up memory
-            del cropped_image_pil, avg_similarity, _
 
     return ProcessResult(best_score, match, [], top_k_design_labels)
 
-def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, CLIP_model, CLIP_transform, threshold=0.72):
+def process_file(file: str, source_dir: str, instance_seg_model: YOLO, seg_processor: SegformerImageProcessor, seg_model: SegformerForSemanticSegmentation, design_embeddings: list, design_labels: list, CLIP_model: clip.model.CLIP, CLIP_transform: torchvision.transforms.Compose, threshold=0.72):
     """
     Processes a single file to find the best matching design based on similarity scores.
 
-    Args:
+    Parameters:
     - file (str): The file name to be processed.
     - source_dir (str): The directory where the file is located.
     - instance_seg_model (object): The instance segmentation model used to crop humans from the image.
@@ -171,7 +211,7 @@ def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model,
     """
     image_path = os.path.join(source_dir, file)
     image_np = open_and_convert_image(image_path)
-    cropped_images = crop_humans(image_np, instance_seg_model, show_images=False)
+    cropped_images = crop_humans(image_np, instance_seg_model)
     if not cropped_images:
         return None
     result = process_cropped_images(cropped_images, seg_processor, seg_model, design_embeddings, design_labels, CLIP_model, CLIP_transform, threshold)
@@ -179,11 +219,11 @@ def process_file(file, source_dir, instance_seg_model, seg_processor, seg_model,
         result.matched_files.append(file)
     return result
 
-def copy_matched_files_and_update_metadata(matched_files, source_dir, target_dir, metadata_info):
+def copy_matched_files_and_update_metadata(matched_files: list, source_dir: str, target_dir: str, metadata_info: dict):
     """
     Copies matched files to a target directory and updates the metadata.
 
-    Args:
+    Parameters:
     - matched_files (list): List of matched file names.
     - source_dir (str): The source directory where the files are located.
     - target_dir (str): The target directory where the files will be copied.

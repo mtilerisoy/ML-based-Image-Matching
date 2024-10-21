@@ -3,6 +3,16 @@ from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentati
 from ultralytics import YOLO
 
 def initialize_models():
+    """
+    Function to initialize the CLIP, YOLOv8 (Human Instance Detection), and Cloth Segmentation models.
+    
+    Returns:
+    - CLIP_model: CLIP model
+    - CLIP_transform: CLIP transform
+    - instance_seg_model: Human Instance Segmentation model (YOLOv8)
+    - seg_processor: Cloth Segmentation processor
+    - seg_model: Cloth Segmentation model
+    """
     # CLIP model initialization
     CLIP_model, CLIP_transform = clip.load("ViT-L/14@336px")
     CLIP_model = CLIP_model.eval()

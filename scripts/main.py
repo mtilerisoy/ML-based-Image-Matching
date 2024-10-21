@@ -6,6 +6,25 @@ from processing import process_file, copy_matched_files_and_update_metadata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def process_directory(subdir, scraped_images_dir, detected_dir, detected_metadata_path, CLIP_model, CLIP_transform, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels):
+    """
+    Function to process a directory of scraped images.
+    
+    Parameters:
+    - subdir: Subdirectory to process (str)
+    - scraped_images_dir: Directory containing scraped images (str)
+    - detected_dir: Directory to save detected images (str)
+    - detected_metadata_path: Path to the detected metadata file (str)
+    - CLIP_model: CLIP model
+    - CLIP_transform: CLIP transform
+    - instance_seg_model: Human Instance Segmentation model
+    - seg_processor: Cloth Segmentation processor
+    - seg_model: Cloth Segmentation model
+    - design_embeddings: List of design embeddings
+    - design_labels: List of design labels
+
+    Returns:
+    - None
+    """
     subdir_path = os.path.join(scraped_images_dir, subdir)
     if os.path.isdir(subdir_path) and not subdir.startswith('x_'):
         print(f"Processing directory: {subdir_path}")
@@ -59,6 +78,9 @@ def process_directory(subdir, scraped_images_dir, detected_dir, detected_metadat
 
 # @profile
 def main():
+    """
+    Main function to process scraped images and detect designs.
+    """
     try:
         # Get the directory of the current script
         script_dir = os.path.dirname(os.path.abspath(__file__))
