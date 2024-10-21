@@ -33,11 +33,9 @@ def save_filtered_image(cropped_image_pil, data_dir, file, idx):
         os.makedirs(save_folder)
     cropped_image_pil.save(os.path.join(save_folder, f"{file[:-4]}_{idx}_filtered.jpg"))
 
-def load_metadata_and_images(source_dir, metadata_file_path):
-    with open(metadata_file_path, 'r') as f:
-        metadata = json.load(f)
+def list_image_files(source_dir):
     sub_files = os.listdir(source_dir)
-    return metadata, sub_files
+    return sub_files
 
 def load_metadata(metadata_file_path):
     with open(metadata_file_path, 'r') as f:
