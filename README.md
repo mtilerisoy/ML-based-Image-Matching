@@ -1,6 +1,6 @@
 # ML-based Image Matching
 
-This project is designed to scrape images from Getty Images based on given keywords, process these images, and match the cloth designs to a reference database using machine learning models. The project includes scripts for scraping images, processing them, and managing metadata.
+This project is designed to scrape images from Getty Images based on given keywords, process these images, and match the cloth designs to a reference database using CLIP model. The project includes scripts for scraping images, processing them, and managing metadata.
 
 ## Table of Contents
 
