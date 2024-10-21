@@ -5,6 +5,7 @@ from ultralytics import YOLO
 def initialize_models():
     # CLIP model initialization
     CLIP_model, CLIP_transform = clip.load("ViT-L/14@336px")
+    CLIP_model = CLIP_model.eval()
 
     # Human Instance Segmentation model initialization
     instance_seg_model = YOLO("yolov8l-seg.pt")

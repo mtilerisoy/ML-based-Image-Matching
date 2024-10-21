@@ -9,14 +9,13 @@ import shutil
 from utils import open_and_convert_image
 
 def image_encoder(image, CLIP_MODEL, CLIP_TRANSFORM):
-    model = CLIP_MODEL.eval()
     image = CLIP_TRANSFORM(image).unsqueeze(0)
     with torch.no_grad():
-        image_features = model.encode_image(image)
+        image_features = CLIP_MODEL.encode_image(image)
     return image_features
 
 def crop_humans(image, CROP_HUMAN_MODEL, show_images=False):
-    assert isinstance(image, np.ndarray), "Image must be a numpy array."
+    # assert isinstance(image, np.ndarray), "Image must be a numpy array."
     result = CROP_HUMAN_MODEL(image, verbose=False)[0]
     boxes = result.boxes
     masks = result.masks
@@ -36,10 +35,10 @@ def crop_humans(image, CROP_HUMAN_MODEL, show_images=False):
             masked_image = cv2.bitwise_and(image, image, mask=blank_mask)
             cropped_masked_img = masked_image[y1:y2, x1:x2]
             cropped_images.append(cropped_masked_img)
-            if show_images:
-                plt.imshow(cv2.cvtColor(cropped_masked_img, cv2.COLOR_BGR2RGB))
-                plt.axis('off')
-                plt.show()
+            # if show_images:
+            #     plt.imshow(cv2.cvtColor(cropped_masked_img, cv2.COLOR_BGR2RGB))
+            #     plt.axis('off')
+            #     plt.show()
     return cropped_images
 
 def segment_clothes(image, SEGMENT_CLOTH_PROCESSOR, SEGMENT_CLOTH_MODEL):
