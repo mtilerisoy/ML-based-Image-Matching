@@ -30,36 +30,84 @@ def image_encoder(image: Image.Image, CLIP_MODEL: clip.model.CLIP, CLIP_TRANSFOR
         image_features = CLIP_MODEL.encode_image(image)
     return image_features
 
-def crop_humans(image: np.ndarray, CROP_HUMAN_MODEL: YOLO):
+def crop_humans(image, CROP_HUMAN_MODEL, show_images=False):
     """
-    Function to crop humans from an image using YOLO detection model.
+    Function to segment and crop people in an image.
     
     Parameters:
-    - image: Image to crop humans from (NumPy array)
-    - CROP_HUMAN_MODEL: YOLO detection model
+    - image: np.ndarray, the image to segment and crop.
+    - model: YOLO object, the YOLO model used for object detection.
+    - show_images: bool, whether to display the cropped images or not.
     
     Returns:
-    - cropped_images: List of cropped human images
+    - cropped_images: list, the cropped images of people in the image.
     """
+
+    # Assert the image as numpy array
+    assert isinstance(image, np.ndarray), "Image must be a numpy array."
+
+    # Convert the image to RGB if it's in BGR format
+    if image.shape[2] == 3 and np.array_equal(image[:, :, 0], image[:, :, 2]):
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # Run inference on a single image
     result = CROP_HUMAN_MODEL(image, verbose=False)[0]
-    boxes = result.boxes
-    masks = result.masks
-    class_names = result.names
+
+    # Process result
+    boxes = result.boxes  # Boxes object for bounding box outputs
+    masks = result.masks  # Masks object for instance segmentation masks
+    class_names = result.names  # Class names for the detected objects
+    
+    # Initialize the list of cropped images
     cropped_images = []
 
+    # Loop through the boxes and masks and crop the people
     if masks is not None:
         for idx, (box, mask) in enumerate(zip(boxes, masks)):
+            
+            # Get the predicted class name
             class_id = int(box.cls[0])
             class_name = class_names[class_id]
+
+            # Skip if the class is not a person
             if class_name != 'person':
+                print(f"Skipping box {idx+1} as it is a {class_name}.")
                 continue
+            
+            # Get coordinates of the bounding box
             x1, y1, x2, y2 = map(int, box.xyxy[0])
+            
+            # Get the mask coordinates
             mask_coords = mask.xy[0]
+            
+            # Create a blank mask with the same dimensions as the original image
             blank_mask = np.zeros(image.shape[:2], dtype=np.uint8)
+            
+            # Fill the blank mask with the mask coordinates
             cv2.fillPoly(blank_mask, [mask_coords.astype(np.int32)], 1)
+            
+            # Apply the mask to the original image
             masked_image = cv2.bitwise_and(image, image, mask=blank_mask)
+            
+            # Crop the masked image using the bounding box coordinates
             cropped_masked_img = masked_image[y1:y2, x1:x2]
             cropped_images.append(cropped_masked_img)
+            
+            if show_images:
+                # Convert the image from BGR to RGB if necessary
+                if cropped_masked_img.shape[2] == 3 and np.array_equal(cropped_masked_img[:, :, 0], cropped_masked_img[:, :, 2]):
+                    cropped_masked_img_rgb = cv2.cvtColor(cropped_masked_img, cv2.COLOR_BGR2RGB)
+                else:
+                    cropped_masked_img_rgb = cropped_masked_img
+                
+                # Display the masked cropped image with the class name in the title
+                plt.imshow(cropped_masked_img_rgb)
+                plt.title(f'Masked Cropped Box {idx+1} - Class: {class_name}')
+                plt.axis('off')
+                plt.show()
+    else:
+        print("No masks detected.")
+    
     return cropped_images
 
 def segment_clothes(image: Image.Image, SEGMENT_CLOTH_PROCESSOR: SegformerImageProcessor, SEGMENT_CLOTH_MODEL: SegformerForSemanticSegmentation):
