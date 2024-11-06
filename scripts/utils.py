@@ -4,6 +4,27 @@ import json
 import numpy as np
 from PIL import Image
 
+import os
+
+def get_first_valid_subdirectory(folder_path: str) -> str:
+    """
+    Function to get the first valid subdirectory in a specified folder.
+    
+    Parameters:
+    - folder_path: Path to the folder (str)
+    
+    Returns:
+    - sub_dir: Path to the first valid subdirectory (str)
+    """
+    subdirs = [subdir for subdir in os.listdir(folder_path) 
+               if os.path.isdir(os.path.join(folder_path, subdir)) 
+               and not subdir.startswith('x_') 
+               and subdir != "DS_Store"]
+    
+    # if subdirs:
+    #     return os.path.join(folder_path, subdirs[0])
+    return subdirs
+
 def open_and_convert_image(file_path: str) -> np.ndarray:
     """
     Function to open an image file and convert it to a NumPy array.
@@ -78,21 +99,6 @@ def load_metadata(metadata_file_path: str) -> dict:
     """
     with open(metadata_file_path, 'r') as f:
         return json.load(f)
-
-def get_first_valid_subdirectory(folder_path: str) -> str:
-    """
-    Function to get the first valid subdirectory in a specified folder.
-    
-    Parameters:
-    - folder_path: Path to the folder (str)
-    
-    Returns:
-    - sub_dir: Path to the first valid subdirectory (str)
-    """
-    for sub_dir in os.listdir(folder_path):
-        if os.path.isdir(os.path.join(folder_path, sub_dir)) and not sub_dir.startswith('x_') and sub_dir != "DS_Store":
-            return os.path.join(folder_path, sub_dir)
-    return None
 
 def get_info(metadata: dict, target_filename: str) -> dict:
     """
