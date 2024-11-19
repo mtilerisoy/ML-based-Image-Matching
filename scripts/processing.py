@@ -51,11 +51,19 @@ def predict_label(threshold, batch_element):
             # Return a label if there is a match
             if avg_similarity >= threshold:
                 del image_features, image
-                torch.mps.empty_cache()
+                # Free up memory
+                if configg.DEVICE == "cuda":
+                    torch.cuda.empty_cache()
+                elif configg.DEVICE == "mps":
+                    torch.mps.empty_cache()
                 return True
             else:
                 del image_features, image
-                torch.mps.empty_cache()
+                # Free up memory
+                if configg.DEVICE == "cuda":
+                    torch.cuda.empty_cache()
+                elif configg.DEVICE == "mps":
+                    torch.mps.empty_cache()
                 return False
     
     # Free up memory
