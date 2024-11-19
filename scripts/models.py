@@ -1,6 +1,6 @@
 import clip
 from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentation
-from ultralytics import YOLO, settings
+from ultralytics import YOLO
 
 def initialize_models(device):
     """
@@ -17,16 +17,6 @@ def initialize_models(device):
     CLIP_model, CLIP_transform = clip.load("ViT-L/14@336px")
     # CLIP_model = CLIP_model.eval()
     CLIP_model = CLIP_model.to(device)
-
-    # YOLOv8 settings
-    settings.update({"comet": False})
-    settings.update({"wandb": False})
-    settings.update({"dvc": False})
-    settings.update({"mlflow": False})
-    settings.update({"tensorboard": False})
-    settings.update({"neptune": False})
-    settings.update({"raytune": False})
-    settings.update({"wandb": False})
     
     # Human Instance Segmentation model initialization
     print("Initializing YOLO model...")
