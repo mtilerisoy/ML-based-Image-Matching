@@ -2,12 +2,6 @@ from sacred import Experiment
 import os
 import torch
 
-import clip
-from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentation
-from ultralytics import YOLO, settings
-
-
-
 ex = Experiment('Vlisco')
 
 @ex.config
@@ -30,19 +24,3 @@ def mode_config():
     scraped_images_dir = os.path.join(data_dir, "scraped")
     detected_dir = os.path.join(data_dir, "detected")
     # detected_metadata_path = os.path.join(detected_dir, "metadata.json")
-
-    # Set up the model configurations
-    model_config = {
-        "clip_model": "ViT-L/14@336px",
-        "yolov8": "utils/yolov8l-seg.pt",
-        "seg_processor": "mattmdjaga/segformer_b2_clothes",
-        "seg_model": "mattmdjaga/segformer_b2_clothes"
-    }
-    # CLIP_model, CLIP_transform = clip.load("ViT-L/14@336px")
-    # CLIP_model = CLIP_model.to(device)
-    # yolov8 = YOLO("utils/yolov8l-seg.pt")
-    # yolov8 = yolov8.to(device)
-    # seg_processor = SegformerImageProcessor.from_pretrained("mattmdjaga/segformer_b2_clothes")
-    # seg_model = AutoModelForSemanticSegmentation.from_pretrained("mattmdjaga/segformer_b2_clothes")
-    # seg_model = seg_model.to(device)
-
