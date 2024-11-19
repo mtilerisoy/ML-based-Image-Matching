@@ -11,6 +11,7 @@ x_*
 # *.csv
 *.json
 utils/
+.idea/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

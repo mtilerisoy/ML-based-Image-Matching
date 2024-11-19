@@ -1,8 +1,8 @@
 import clip
 from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentation
-from ultralytics import YOLO
+from ultralytics import YOLO, settings
 
-def initialize_models():
+def initialize_models(device):
     """
     Function to initialize the CLIP, YOLOv8 (Human Instance Detection), and Cloth Segmentation models.
     
@@ -15,13 +15,29 @@ def initialize_models():
     """
     # CLIP model initialization
     CLIP_model, CLIP_transform = clip.load("ViT-L/14@336px")
-    CLIP_model = CLIP_model.eval()
+    # CLIP_model = CLIP_model.eval()
+    CLIP_model = CLIP_model.to(device)
 
+    # YOLOv8 settings
+    settings.update({"comet": False})
+    settings.update({"wandb": False})
+    settings.update({"dvc": False})
+    settings.update({"mlflow": False})
+    settings.update({"tensorboard": False})
+    settings.update({"neptune": False})
+    settings.update({"raytune": False})
+    settings.update({"wandb": False})
+    
     # Human Instance Segmentation model initialization
-    instance_seg_model = YOLO("yolov8l-seg.pt")
+    print("Initializing YOLO model...")
+    yolov8 = YOLO("utils/yolov8l-seg.pt")
+    # instance_seg_model = instance_seg_model.eval()
+    yolov8 = yolov8.to(device)
 
     # Cloth segmentation model initialization
     seg_processor = SegformerImageProcessor.from_pretrained("mattmdjaga/segformer_b2_clothes")
     seg_model = AutoModelForSemanticSegmentation.from_pretrained("mattmdjaga/segformer_b2_clothes")
+    # seg_model = seg_model.eval()
+    seg_model = seg_model.to(device)
 
-    return CLIP_model, CLIP_transform, instance_seg_model, seg_processor, seg_model
+    return CLIP_model, CLIP_transform, yolov8, seg_processor, seg_model

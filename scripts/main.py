@@ -1,116 +1,65 @@
 import os
-from models import initialize_models
-import utils
-from processing import process_file, copy_matched_files_and_update_metadata
-# from memory_profiler import profile
+import utils 
+from processing import process_batch, predict_label, crop_humans
+from memory_profiler import profile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import ex
+import torch
+from torchvision import transforms
+from time import sleep
+from PIL import Image
+import configg
 
-def process_directory(subdir, scraped_images_dir, detected_dir, detected_metadata_path, CLIP_model, CLIP_transform, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels):
-    """
-    Function to process a directory of scraped images.
-    
-    Parameters:
-    - subdir: Subdirectory to process (str)
-    - scraped_images_dir: Directory containing scraped images (str)
-    - detected_dir: Directory to save detected images (str)
-    - detected_metadata_path: Path to the detected metadata file (str)
-    - CLIP_model: CLIP model
-    - CLIP_transform: CLIP transform
-    - instance_seg_model: Human Instance Segmentation model
-    - seg_processor: Cloth Segmentation processor
-    - seg_model: Cloth Segmentation model
-    - design_embeddings: List of design embeddings
-    - design_labels: List of design labels
+def process_directory(_config, subdir, transform):
+    images_list = utils.get_images_in_directory(os.path.join(_config["scraped_images_dir"], subdir))
+    batch_size = _config["batch_size"]
 
-    Returns:
-    - None
-    """
-    subdir_path = os.path.join(scraped_images_dir, subdir)
-    print(f"Subdir: {subdir_path} || Scraped images dir: {scraped_images_dir}  subdir_path: {subdir_path}")
-    if os.path.isdir(subdir_path) and not subdir.startswith('x_'):
-        print(f"Processing directory: {subdir_path}")
+    labels = []
+    count = 0
+    for i in range(0, len(images_list), batch_size):
+        count = count + 1
+        batch = images_list[i:i+batch_size]
 
-        # Rename the folder to label it as being processed
-        subdir_parent = os.path.dirname(subdir_path)
-        subdir_name = os.path.basename(subdir_path)
-        processing_dir = os.path.join(subdir_parent, f"x_{subdir_name}")
-        if not os.path.exists(processing_dir):
-            print(f"Processing directory: {subdir_path} and subdirectory: {subdir_name}")
-            os.rename(subdir_path, processing_dir)
-        print(f"Renamed keyword directory to: {processing_dir}")
-
-        # Load metadata and files
-        metadata_file_path = os.path.join(processing_dir, "metadata.json")
-        print(f"Loading metadata and files from {metadata_file_path}...")
-        metadata = utils.load_metadata(metadata_file_path)
-        print(f"Metadata and files loaded. Length of metadata: {len(metadata)}")
+        print(f"AT INDEX: {i}\nBATCH: {batch}")
         
-        # Fixed variables
-        sub_image_files = utils.list_image_files(processing_dir)
-        len_sub_files = len(sub_image_files)
-        print(f"Length of sub files: {len_sub_files}")
+        # # Load and transform images
+        # images = [transform(Image.open(image_path).convert("RGB")) for image_path in batch]
+        # # Stack images into a single tensor
+        # images = torch.stack(images) 
 
-        # Initialize variables to keep track of the number of matches and failed files
-        match = 0
+        labels.extend(process_batch(_config, batch, transform))
+        
+        # Free up memory
+        if configg.DEVICE == "cuda":
+            torch.cuda.empty_cache()
+        elif configg.DEVICE == "mps":
+            torch.mps.empty_cache()
 
-        print("Processing files...")
-        for file_count, file in enumerate(sub_image_files):
-            if file == ".DS_Store" or file == "metadata.json":
-                continue
-            print(f"Processing file {file_count}/{len_sub_files}: {file}")
-            result = process_file(file, processing_dir, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels, CLIP_model, CLIP_transform)
-            
-            if result and result.match > 0:
-                match += 1
-                print(f"Match found for file: {file} | Match count: {match}/{len_sub_files}")
-
-                # Create metadata_info dictionary
-                metadata_info = {
-                    "scraped_metadata": metadata,
-                    "detected_metadata_file": detected_metadata_path,
-                    "matched_scores": [result.best_score],
-                    "matched_labels": result.top_k_design_labels
-                }
-
-                # Copy matched files to the detected directory and update metadata
-                copy_matched_files_and_update_metadata(result.matched_files, processing_dir, detected_dir, metadata_info)
-
-                # Clear intermediate results to free up memory
-                del result
-
-        # Rename the folder to label it as processed
-        processed_dir = os.path.join(subdir_parent, f"x_{subdir_name}_processed")
-        if not os.path.exists(processed_dir):
-            os.rename(processing_dir, processed_dir)
-        print(f"Renamed keyword directory to: {processed_dir}")
+        if count == 5:
+            break
+            raise SystemExit("Processed a single batch")
+    
+    for idx, label in enumerate(labels):
+        if label:
+            print(images_list[idx])
 
 
-# @profile
+@profile
 @ex.automain
 def main(_config):
-    """
-    Main function to process scraped images and detect designs.
-    """
-    print("Initializing models...")
-    CLIP_model, CLIP_transform, instance_seg_model, seg_processor, seg_model = initialize_models()
-    print("Models initialized.")
+    scraped_images_dir = _config["scraped_images_dir"]
 
-    print("Loading design embeddings...")
-    design_embeddings, design_labels = utils.load_design_embeddings(_config["embeddings_dir"], _config["labels_dir"])
-    print("Design embeddings loaded.")
+    subdirs = utils.get_valid_subdirs(scraped_images_dir)
 
-    subdirs = utils.get_first_valid_subdirectory(_config["scraped_images_dir"])
-    print(f"Subdirs: {subdirs}")
+    assert len(subdirs) > 0, f"No valid subdirectories found in {scraped_images_dir}"
 
-    if subdirs is not None:
-        # Use ThreadPoolExecutor to process directories in parallel
-        with ThreadPoolExecutor(max_workers=_config["max_workers"]) as executor:
-            futures = [executor.submit(process_directory, subdir, _config["scraped_images_dir"], _config["detected_dir"], _config["detected_metadata_path"], CLIP_model, CLIP_transform, instance_seg_model, seg_processor, seg_model, design_embeddings, design_labels) for subdir in subdirs]
-            for future in as_completed(futures):
-                try:
-                    future.result()
-                except Exception as e:
-                    print(f"An error occurred while processing a directory: {e}")
-    else:
-        raise ValueError("No valid subdirectories found in the scraped images directory.\n subdirs is None!")
+    # Define the transform to convert images to tensors
+    transform = transforms.Compose([
+        transforms.Resize((320, 320)),  # Resize images to a fixed size
+        transforms.ToTensor()  # Convert images to tensors
+    ])
+
+    for subdir in subdirs:
+        images_list = utils.get_images_in_directory(os.path.join(scraped_images_dir, subdir))
+        print(f"Number of images: {len(images_list)}")
+        process_directory(_config, subdir, transform)
