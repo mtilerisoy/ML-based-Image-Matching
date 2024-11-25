@@ -1,6 +1,6 @@
 import os
 import utils 
-from processing import process_batch, predict_label, crop_humans
+from processing import process_batch # , predict_label, crop_humans
 from memory_profiler import profile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import ex
@@ -10,9 +10,9 @@ from time import sleep
 from PIL import Image
 import configg
 
-def process_directory(_config, subdir, transform):
-    images_list = utils.get_images_in_directory(os.path.join(_config["scraped_images_dir"], subdir))
-    batch_size = _config["batch_size"]
+def process_directory(subdir, transform):
+    images_list = utils.get_images_in_directory(os.path.join(configg.scraped_images_dir, subdir))
+    batch_size = configg.batch_size
 
     labels = []
     count = 0
@@ -22,12 +22,7 @@ def process_directory(_config, subdir, transform):
 
         print(f"AT INDEX: {i}\nBATCH: {batch}")
         
-        # # Load and transform images
-        # images = [transform(Image.open(image_path).convert("RGB")) for image_path in batch]
-        # # Stack images into a single tensor
-        # images = torch.stack(images) 
-
-        labels.extend(process_batch(_config, batch, transform))
+        labels.extend(process_batch(batch, transform))
         
         # Free up memory
         if configg.DEVICE == "cuda":
@@ -46,8 +41,8 @@ def process_directory(_config, subdir, transform):
 
 @profile
 @ex.automain
-def main(_config):
-    scraped_images_dir = _config["scraped_images_dir"]
+def main():
+    scraped_images_dir = configg.scraped_images_dir
 
     subdirs = utils.get_valid_subdirs(scraped_images_dir)
 
@@ -62,4 +57,8 @@ def main(_config):
     for subdir in subdirs:
         images_list = utils.get_images_in_directory(os.path.join(scraped_images_dir, subdir))
         print(f"Number of images: {len(images_list)}")
-        process_directory(_config, subdir, transform)
+        process_directory(subdir, transform)
+
+# TODO: Implement cloth instance segmentation
+    # TODO: add the functionality under crop_humans where you mask the humans and then crop the images
+    ######: Check the list/tensor structure of the cropped_images and
