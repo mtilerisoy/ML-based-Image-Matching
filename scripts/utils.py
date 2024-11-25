@@ -6,39 +6,66 @@ from PIL import Image
 
 import os
 
-def get_first_valid_subdirectory(folder_path: str) -> str:
+def get_valid_subdirs(root_path: str) -> str:
     """
     Function to get the first valid subdirectory in a specified folder.
     
     Parameters:
-    - folder_path: Path to the folder (str)
+    - root_path: Root path to the data folder (str)
     
     Returns:
     - sub_dir: Path to the first valid subdirectory (str)
     """
-    subdirs = [subdir for subdir in os.listdir(folder_path) 
-               if os.path.isdir(os.path.join(folder_path, subdir)) 
+    subdirs = [subdir for subdir in os.listdir(root_path) 
+               if os.path.isdir(os.path.join(root_path, subdir)) 
                and not subdir.startswith('x_') 
                and subdir != "DS_Store"]
     
-    # if subdirs:
-    #     return os.path.join(folder_path, subdirs[0])
+    assert len(subdirs) > 0, f"No valid subdirectories found in {root_path}"
     return subdirs
 
-def open_and_convert_image(file_path: str) -> np.ndarray:
+def get_images_in_directory(directory: str) -> list:
     """
-    Function to open an image file and convert it to a NumPy array.
+    Function to get the full path to all images in a specified directory.
     
     Parameters:
-    - file_path: Path to the image file (str)
+    - directory: Path to the directory (str)
     
     Returns:
-    - image: Converted image as a NumPy array (np.ndarray)
+    - image_paths: List of full paths to image files in the directory (list)
     """
-    image = Image.open(file_path).convert("RGB")
-    return np.array(image)
+    # Get all image files in the directory
+    image_files = [f for f in os.listdir(directory) if f.endswith(".jpg") or f.endswith(".jpeg") or f.endswith(".png") or f.endswith(".jp2")]
+    
+    # Get the full path to each image file
+    image_paths = [os.path.join(directory, f) for f in image_files]
+    return image_paths
 
-def load_design_embeddings(embeddings_path: str, labels_path: str = None) -> tuple:
+def load_metadata(metadata_file_path: str) -> dict:
+    """
+    Function to load metadata from a JSON file.
+    
+    Parameters:
+    - metadata_file_path: Path to the metadata JSON file (str)
+    
+    Returns:
+    - metadata: Loaded metadata (dict)
+    """
+    with open(metadata_file_path, 'r') as f:
+        return json.load(f)
+
+def save_metadata(metadata: dict, metadata_file_path: str):
+    """
+    Function to save metadata to a JSON file.
+    
+    Parameters:
+    - metadata: Metadata to save (dict)
+    - metadata_file_path: Path to the metadata JSON file (str)
+    """
+    with open(metadata_file_path, 'w') as f:
+        json.dump(metadata, f, indent=4)
+
+def load_design_embeddings() -> tuple:
     """
     Function to load design embeddings and optionally design labels from pickle files.
     
@@ -50,14 +77,42 @@ def load_design_embeddings(embeddings_path: str, labels_path: str = None) -> tup
     - design_embeddings: Loaded design embeddings (list)
     - design_labels: Loaded design labels (list)
     """
-    with open(embeddings_path, 'rb') as f:
+    with open("/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/embeddings.pkl", 'rb') as f:
         design_embeddings = pickle.load(f)
-    if labels_path:
-        with open(labels_path, 'rb') as f:
-            design_labels = pickle.load(f)
-    else:
-        design_labels = []
+
+    with open("/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/labels.pkl", 'rb') as f:
+        design_labels = pickle.load(f)
+
     return design_embeddings, design_labels
+
+# def get_info(metadata: dict, target_filename: str) -> dict:
+#     """
+#     Function to get information about a target filename from metadata.
+    
+#     Parameters:
+#     - metadata: Metadata dictionary (dict)
+#     - target_filename: Target filename to search for (str)
+    
+#     Returns:
+#     - image_info: Information about the target filename (dict)
+#     """
+#     for image_info in metadata.get("images", []):
+#         if image_info.get("filename") == target_filename:
+#             return image_info
+
+# def open_and_convert_image(file_path: str) -> np.ndarray:
+#     """
+#     Function to open an image file and convert it to a NumPy array.
+    
+#     Parameters:
+#     - file_path: Path to the image file (str)
+    
+#     Returns:
+#     - image: Converted image as a NumPy array (np.ndarray)
+#     """
+#     image = Image.open(file_path).convert("RGB")
+#     return np.array(image)
+
 
 def save_filtered_image(cropped_image_pil: Image.Image, data_dir: str, file: str, idx: int):
     """

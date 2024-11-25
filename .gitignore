@@ -1,4 +1,5 @@
 # Custom Files
+.idea/*
 *.pt
 *.pth
 .DS_Store
