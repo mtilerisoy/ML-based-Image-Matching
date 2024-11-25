@@ -7,6 +7,7 @@ import config
 import torch
 from PIL import Image
 import shutil
+from time import time
 
 def copy_matching_images(image_path, destination):
     image_name = os.path.basename(image_path)
@@ -56,9 +57,22 @@ def main():
 
     
     for subdir in subdirs:
-        images_list = utils.get_images_in_directory(os.path.join(scraped_images_dir, subdir))
+        current_dir = os.path.join(scraped_images_dir, subdir)
+        being_processed_dir = os.path.join(scraped_images_dir, f"a_{subdir}")
+        processed_dir = os.path.join(scraped_images_dir, f"x_{subdir}")
+        
+        # rename the subdirectory to indicate that it is being processed
+        os.rename(current_dir, being_processed_dir)
+        
+        images_list = utils.get_images_in_directory(being_processed_dir)
         print(f"Number of images: {len(images_list)}")
+        
+        # process the images in the subdirectory
         process_directory(images_list)
+        
+        # rename the subdirectory to indicate that the processing is complete
+        os.rename(being_processed_dir, processed_dir)
+
 
 if __name__ == "__main__":
     main()

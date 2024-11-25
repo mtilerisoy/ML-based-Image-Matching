@@ -18,7 +18,7 @@ def get_valid_subdirs(root_path: str) -> str:
     """
     subdirs = [subdir for subdir in os.listdir(root_path) 
                if os.path.isdir(os.path.join(root_path, subdir)) 
-               and not subdir.startswith('x_') 
+               and not subdir.startswith('x_') and not subdir.startswith('a_')
                and subdir != "DS_Store"]
     
     assert len(subdirs) > 0, f"No valid subdirectories found in {root_path}"
