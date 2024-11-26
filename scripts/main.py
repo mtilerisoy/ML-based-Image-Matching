@@ -33,7 +33,7 @@ def process_directory(images_list):
             avg_similarity = calculate_similarity(cropped_image_pil, config.design_embeddings, config.design_labels, config.CLIP_model, config.CLIP_transform)
             if avg_similarity >= config.threshold:
                 # labels.append(images_list[i])
-                copy_matching_images(images_list[i], config.detected_dir)
+                copy_matching_images(images_list[i], config.copy_dir)
                 break
 
         # Free up memory
@@ -45,7 +45,7 @@ def process_directory(images_list):
         # copy_matching_images(labels, config.matching_images_dir)
 
 
-@profile
+# @profile
 def main():
     scraped_images_dir = config.scraped_images_dir
 
@@ -55,8 +55,12 @@ def main():
 
     print(f"Number of subdirectories: {len(subdirs)}")
 
-    
     for subdir in subdirs:
+        config.copy_dir = os.path.join(config.detected_dir, subdir)
+
+        print(f"Creating directory: {config.copy_dir}")
+        os.makedirs(config.copy_dir, exist_ok=True)
+        
         current_dir = os.path.join(scraped_images_dir, subdir)
         being_processed_dir = os.path.join(scraped_images_dir, f"a_{subdir}")
         processed_dir = os.path.join(scraped_images_dir, f"x_{subdir}")

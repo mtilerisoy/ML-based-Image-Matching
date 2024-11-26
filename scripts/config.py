@@ -35,3 +35,4 @@ embeddings_dir = os.path.join(data_dir, "embeddings", "embeddings.pkl")
 labels_dir = os.path.join(data_dir, "embeddings", "labels.pkl")
 scraped_images_dir = os.path.join(data_dir, "scraped")
 detected_dir = os.path.join(data_dir, "detected")
+copy_dir = None
