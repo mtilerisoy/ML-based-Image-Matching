@@ -9,6 +9,8 @@ from PIL import Image
 import shutil
 from time import time
 
+from processing import image_encoder
+
 def copy_matching_images(image_path, destination):
     image_name = os.path.basename(image_path)
     dest_path = os.path.join(destination, image_name)
@@ -16,6 +18,7 @@ def copy_matching_images(image_path, destination):
     shutil.copy(image_path, dest_path)
 
 def process_directory(images_list):
+    umap_reducer = torch.load("umap_reducer.pt")
 
     count = 0
     for i in range(0, len(images_list)):
@@ -30,11 +33,20 @@ def process_directory(images_list):
             cropped_image_pil = segment_and_apply_mask(cropped_image, config.seg_processor, config.seg_model)
             if cropped_image_pil is None:
                 continue
-            avg_similarity = calculate_similarity(cropped_image_pil, config.design_embeddings, config.design_labels, config.CLIP_model, config.CLIP_transform)
-            if avg_similarity >= config.threshold:
-                # labels.append(images_list[i])
+            # avg_similarity = calculate_similarity(cropped_image_pil, config.design_embeddings, config.design_labels, config.CLIP_model, config.CLIP_transform)
+            # if avg_similarity >= config.threshold:
+            #     # labels.append(images_list[i])
+            #     copy_matching_images(images_list[i], config.copy_dir)
+            #     break
+
+            # design_embeddings = torch.tensor(design_embeddings).to(config.device)
+            image_features = image_encoder(cropped_image_pil, config.CLIP_model, config.CLIP_transform)
+            image_features = image_features.to("cpu")
+
+            reduced_image_features = umap_reducer.transform(image_features)
+
+            if reduced_image_features[0, 0] < 12:
                 copy_matching_images(images_list[i], config.copy_dir)
-                break
 
         # Free up memory
         if config.DEVICE == "cuda":
