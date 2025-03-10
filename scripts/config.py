@@ -16,7 +16,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is
 CLIP_model, CLIP_transform, yolov8, seg_processor, seg_model = initialize_models(DEVICE)
 
 # Load the design embeddings and labels
-design_embeddings, design_labels = utils.load_design_embeddings()
+# design_embeddings, design_labels = utils.load_design_embeddings()
 
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 num_gpus = 1
