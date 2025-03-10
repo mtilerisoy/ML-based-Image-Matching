@@ -1,64 +1,102 @@
 import os
 import utils 
-from processing import process_batch # , predict_label, crop_humans
+from processing import crop_humans, segment_and_apply_mask, calculate_similarity
 from memory_profiler import profile
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from config import ex
+import config
 import torch
-from torchvision import transforms
-from time import sleep
 from PIL import Image
-import configg
+import shutil
+from time import time
 
-def process_directory(subdir, transform):
-    images_list = utils.get_images_in_directory(os.path.join(configg.scraped_images_dir, subdir))
-    batch_size = configg.batch_size
+from processing import image_encoder
 
-    labels = []
+import warnings
+
+# Filter out UserWarning and FutureWarning messages.
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+
+def copy_matching_images(image_path, destination):
+    image_name = os.path.basename(image_path)
+    dest_path = os.path.join(destination, image_name)
+    print(f"Copying {image_name} to {dest_path}")
+    shutil.copy(image_path, dest_path)
+
+def process_directory(images_list):
+    umap_reducer = torch.load("umap_model_original.pt")
+
     count = 0
-    for i in range(0, len(images_list), batch_size):
+    len_images = len(images_list)
+    for i in range(0, len_images):
         count = count + 1
-        batch = images_list[i:i+batch_size]
+        image = Image.open(images_list[i]).convert("RGB")
 
-        print(f"AT INDEX: {i}\nBATCH: {batch}")
+        print(f"AT IMAGE INDEX: {i}/{len_images}")
+
+        cropped_images = crop_humans(image, config.yolov8)
         
-        labels.extend(process_batch(batch, transform))
-        
+        for idx, cropped_image in enumerate(cropped_images):
+            cropped_image_pil = segment_and_apply_mask(cropped_image, config.seg_processor, config.seg_model)
+            if cropped_image_pil is None:
+                continue
+            # avg_similarity = calculate_similarity(cropped_image_pil, config.design_embeddings, config.design_labels, config.CLIP_model, config.CLIP_transform)
+            # if avg_similarity >= config.threshold:
+            #     # labels.append(images_list[i])
+            #     copy_matching_images(images_list[i], config.copy_dir)
+            #     break
+
+            # design_embeddings = torch.tensor(design_embeddings).to(config.device)
+            image_features = image_encoder(cropped_image_pil, config.CLIP_model, config.CLIP_transform)
+            image_features = image_features.to("cpu")
+
+            reduced_image_features = umap_reducer.transform(image_features)
+
+            if reduced_image_features[0, 0] < config.threshold:
+                copy_matching_images(images_list[i], config.copy_dir)
+
         # Free up memory
-        if configg.DEVICE == "cuda":
+        if config.DEVICE == "cuda":
             torch.cuda.empty_cache()
-        elif configg.DEVICE == "mps":
+        elif config.DEVICE == "mps":
             torch.mps.empty_cache()
-
-        if count == 5:
-            break
-            raise SystemExit("Processed a single batch")
-    
-    for idx, label in enumerate(labels):
-        if label:
-            print(images_list[idx])
+        
+        # copy_matching_images(labels, config.matching_images_dir)
 
 
-@profile
-@ex.automain
+# @profile
 def main():
-    scraped_images_dir = configg.scraped_images_dir
+    scraped_images_dir = config.scraped_images_dir
 
     subdirs = utils.get_valid_subdirs(scraped_images_dir)
 
     assert len(subdirs) > 0, f"No valid subdirectories found in {scraped_images_dir}"
 
-    # Define the transform to convert images to tensors
-    transform = transforms.Compose([
-        transforms.Resize((320, 320)),  # Resize images to a fixed size
-        transforms.ToTensor()  # Convert images to tensors
-    ])
+    print(f"Number of subdirectories: {len(subdirs)}")
 
     for subdir in subdirs:
-        images_list = utils.get_images_in_directory(os.path.join(scraped_images_dir, subdir))
-        print(f"Number of images: {len(images_list)}")
-        process_directory(subdir, transform)
+        config.copy_dir = os.path.join(config.detected_dir, subdir)
 
-# TODO: Implement cloth instance segmentation
-    # TODO: add the functionality under crop_humans where you mask the humans and then crop the images
-    ######: Check the list/tensor structure of the cropped_images and
+        print(f"Creating directory: {config.copy_dir}")
+        os.makedirs(config.copy_dir, exist_ok=True)
+        
+        current_dir = os.path.join(scraped_images_dir, subdir)
+        being_processed_dir = os.path.join(scraped_images_dir, f"a_{subdir}")
+        processed_dir = os.path.join(scraped_images_dir, f"x_{subdir}")
+        
+        # rename the subdirectory to indicate that it is being processed
+        os.rename(current_dir, being_processed_dir)
+        
+        images_list = utils.get_images_in_directory(being_processed_dir)
+        print(f"Number of images: {len(images_list)}")
+        
+        # process the images in the subdirectory
+        process_directory(images_list)
+        
+        # rename the subdirectory to indicate that the processing is complete
+        os.rename(being_processed_dir, processed_dir)
+
+
+if __name__ == "__main__":
+    main()
