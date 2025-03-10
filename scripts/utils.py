@@ -65,7 +65,7 @@ def save_metadata(metadata: dict, metadata_file_path: str):
     with open(metadata_file_path, 'w') as f:
         json.dump(metadata, f, indent=4)
 
-def load_design_embeddings() -> tuple:
+def load_design_embeddings(name: str) -> tuple:
     """
     Function to load design embeddings and optionally design labels from pickle files.
     
@@ -77,42 +77,18 @@ def load_design_embeddings() -> tuple:
     - design_embeddings: Loaded design embeddings (list)
     - design_labels: Loaded design labels (list)
     """
-    with open("/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/embeddings.pkl", 'rb') as f:
-        design_embeddings = pickle.load(f)
+    if name == 'clip':
+        with open("/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/clip_embeddings.pkl", 'rb') as f:
+            design_embeddings = pickle.load(f)
+    
+    elif name == 'vit':
+        with open("/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/vit_embeddings.pkl", 'rb') as f:
+            design_embeddings = pickle.load(f)
 
     with open("/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/labels.pkl", 'rb') as f:
         design_labels = pickle.load(f)
 
     return design_embeddings, design_labels
-
-# def get_info(metadata: dict, target_filename: str) -> dict:
-#     """
-#     Function to get information about a target filename from metadata.
-    
-#     Parameters:
-#     - metadata: Metadata dictionary (dict)
-#     - target_filename: Target filename to search for (str)
-    
-#     Returns:
-#     - image_info: Information about the target filename (dict)
-#     """
-#     for image_info in metadata.get("images", []):
-#         if image_info.get("filename") == target_filename:
-#             return image_info
-
-# def open_and_convert_image(file_path: str) -> np.ndarray:
-#     """
-#     Function to open an image file and convert it to a NumPy array.
-    
-#     Parameters:
-#     - file_path: Path to the image file (str)
-    
-#     Returns:
-#     - image: Converted image as a NumPy array (np.ndarray)
-#     """
-#     image = Image.open(file_path).convert("RGB")
-#     return np.array(image)
-
 
 def save_filtered_image(cropped_image_pil: Image.Image, data_dir: str, file: str, idx: int):
     """
@@ -185,3 +161,60 @@ def check_design_label_match(top_k_design_labels: list, file: str) -> bool:
         if design_label[:6] == file[:6]:
             return True
     return False
+
+import os
+import torch
+from PIL import Image
+from transformers import ViTForImageClassification, ViTFeatureExtractor
+import pickle
+
+def generate_embeddings():
+
+    # Load pre-trained ViT model and feature extractor
+    ViT_model_name = "google/vit-base-patch16-224"  # You can choose other ViT models
+    ViT_model = ViTForImageClassification.from_pretrained(ViT_model_name, output_hidden_states=True)  # Enable hidden states
+    ViT_feature_extractor = ViTFeatureExtractor.from_pretrained(ViT_model_name)
+
+    # Move model to the appropriate device
+    device = torch.device("mps")
+    ViT_model.to(device)
+
+    # Path to the directory containing the images
+    images_dir = "/Users/ilerisoy/Vlisco data/Classics/designs"
+    image_paths = [os.path.join(images_dir, img) for img in os.listdir(images_dir) if img.endswith((".jpg", ".png", ".jpeg", ".jp2"))]
+
+    # List to store the embeddings
+    embeddings = []
+
+    # Process each image
+    for i, image_path in enumerate(image_paths):
+        # Load the image
+        image = Image.open(image_path).convert("RGB")
+        
+        # Preprocess the image using the ViT feature extractor
+        inputs = ViT_feature_extractor(images=image, return_tensors="pt").to(device)
+        
+        # Extract features from the ViT model
+        with torch.no_grad():
+            outputs = ViT_model(**inputs)
+            # Access the hidden states from the transformer layers
+            hidden_states = outputs.hidden_states  # Tuple of all hidden states
+            
+            # Use the last hidden state (or average all hidden states) as features
+            last_hidden_state = hidden_states[-1]  # Shape: [batch_size, sequence_length, hidden_size]
+            
+            # Average over the sequence dimension to get a single feature vector
+            image_features = last_hidden_state.mean(dim=1)  # Shape: [batch_size, hidden_size]
+        
+        # Append the embedding to the list
+        embeddings.append(image_features.cpu())  # Move to CPU and store
+        
+        if (i + 1) % 100 == 0:
+            print(f"Processed {i + 1} images")
+
+    # Save the embeddings as a list of tensors using pickle
+    output_path = "/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/embeddings.pkl"
+    with open(output_path, "wb") as f:
+        pickle.dump(embeddings, f)
+
+    print(f"Embeddings saved to {output_path}")
