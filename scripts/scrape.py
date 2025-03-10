@@ -69,24 +69,28 @@ def get_images_from_page(keyword, page_num, family='creative'):
     return images_info
 
 async def download_image_async(session, image_url, folder_name, keyword, image_id):
-    async with session.get(image_url) as response:
-        if response.status == 200:
-            timestamp = datetime.now().strftime("%d%m%Y")
-            keyword_modified = keyword.replace(' ', '_')
-            image_name = f"{keyword_modified}_{timestamp}_{image_id}.jpg"
-            image_path = os.path.join(folder_name, image_name)
-            
-            with open(image_path, 'wb') as file:
-                while True:
-                    chunk = await response.content.read(1024)
-                    if not chunk:
-                        break
-                    file.write(chunk)
-            print(f"Downloaded: {image_name}")
-            return image_name, image_url, None
-        else:
-            print(f"Failed to download: {image_url}")
-            return None, image_url, "Failed to download"
+    try:
+        async with session.get(image_url) as response:
+            if response.status == 200:
+                timestamp = datetime.now().strftime("%d%m%Y")
+                keyword_modified = keyword.replace(' ', '_')
+                image_name = f"{keyword_modified}_{timestamp}_{image_id}.jpg"
+                image_path = os.path.join(folder_name, image_name)
+                
+                with open(image_path, 'wb') as file:
+                    while True:
+                        chunk = await response.content.read(1024)
+                        if not chunk:
+                            break
+                        file.write(chunk)
+                print(f"Downloaded: {image_name}")
+                return image_name, image_url, None
+            else:
+                print(f"Failed to download: {image_url}")
+                return None, image_url, "Failed to download"
+    except Exception as e:
+        print(f"Error downloading {image_url}: {str(e)}")
+        return None, image_url, str(e)
 
 def save_metadata_to_json(metadata, folder_name):
     json_file_path = os.path.join(folder_name, "metadata.json")
