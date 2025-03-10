@@ -3,15 +3,24 @@
 *.pt
 *.pth
 .DS_Store
-xxx*
 *.jpg
 *.jp2
 *.jpeg
 *.png
 x_*
+x*
+xxx*
 # *.csv
 *.json
 utils/
+analysis/
+cache/
+
+demo.ipynb
+dataset.py
+checkers.py
+analysis.ipynb
+dim_reduction_analysis.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
