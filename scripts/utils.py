@@ -3,7 +3,6 @@ import os
 import json
 import numpy as np
 from PIL import Image
-from config import ex
 
 import os
 
@@ -19,7 +18,7 @@ def get_valid_subdirs(root_path: str) -> str:
     """
     subdirs = [subdir for subdir in os.listdir(root_path) 
                if os.path.isdir(os.path.join(root_path, subdir)) 
-               and not subdir.startswith('x_') 
+               and not subdir.startswith('x_') and not subdir.startswith('a_')
                and subdir != "DS_Store"]
     
     assert len(subdirs) > 0, f"No valid subdirectories found in {root_path}"
@@ -78,42 +77,13 @@ def load_design_embeddings() -> tuple:
     - design_embeddings: Loaded design embeddings (list)
     - design_labels: Loaded design labels (list)
     """
-    with open("/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/embeddings.pkl", 'rb') as f:
+    with open("/home/ml_vlisco/ML-based-Image-Matching/data/embeddings/embeddings.pkl", 'rb') as f:
         design_embeddings = pickle.load(f)
 
-    # with open("~/Vlisco/ML-based-Image-Matching/data/embeddings/labels.pkl", 'rb') as f:
-    #     design_labels = pickle.load(f)
+    with open("/home/ml_vlisco/ML-based-Image-Matching/data/embeddings/labels.pkl", 'rb') as f:
+        design_labels = pickle.load(f)
 
-    return design_embeddings # , design_labels
-
-# def get_info(metadata: dict, target_filename: str) -> dict:
-#     """
-#     Function to get information about a target filename from metadata.
-    
-#     Parameters:
-#     - metadata: Metadata dictionary (dict)
-#     - target_filename: Target filename to search for (str)
-    
-#     Returns:
-#     - image_info: Information about the target filename (dict)
-#     """
-#     for image_info in metadata.get("images", []):
-#         if image_info.get("filename") == target_filename:
-#             return image_info
-
-# def open_and_convert_image(file_path: str) -> np.ndarray:
-#     """
-#     Function to open an image file and convert it to a NumPy array.
-    
-#     Parameters:
-#     - file_path: Path to the image file (str)
-    
-#     Returns:
-#     - image: Converted image as a NumPy array (np.ndarray)
-#     """
-#     image = Image.open(file_path).convert("RGB")
-#     return np.array(image)
-
+    return design_embeddings, design_labels
 
 def save_filtered_image(cropped_image_pil: Image.Image, data_dir: str, file: str, idx: int):
     """
