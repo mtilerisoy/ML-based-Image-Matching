@@ -184,7 +184,7 @@ def process_images_to_embeddings(image_dir, model, processor):
 
     # Process each image
     for idx, filename in enumerate(image_files):
-        if idx % 99 == 0:
+        if idx % 10 == 0:
             print(f'Processing image {idx + 1} of {len_images}')
         image_path = os.path.join(image_dir, filename)
         image = Image.open(image_path).convert('RGB')
@@ -218,12 +218,12 @@ def rename_images_in_folder(folder_path):
 if __name__ == "__main__":
     
     # Define the folders to process and save
-    folder_2_process = "/Users/ilerisoy/Vlisco data/Scraped Images"
-    folder_2_save =  "/Users/ilerisoy/Vlisco data/Data Folders Cropped/possible_vlisco/others"
+    folder_2_process = "/Users/ilerisoy/Vlisco data/Week 16"
+    folder_2_save =  "/Users/ilerisoy/Vlisco data/ACTUAL VLISCO/"
     
     try:
-        # segment_n_save_dir(folder_2_process, folder_2_save)
-        rename_images_in_folder(folder_2_save)
+        segment_n_save_dir(folder_2_process, folder_2_save)
+        # rename_images_in_folder(folder_2_save)
         # embed_n_save_dir(folder_2_process, folder_2_save)
     except Exception as e:
         print(f"Error: {e}")
