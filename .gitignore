@@ -12,6 +12,10 @@ x_*
 *.json
 utils/
 .idea/
+*ipynb
+analysis/
+x*
+cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
