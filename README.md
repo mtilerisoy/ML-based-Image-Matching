@@ -42,13 +42,16 @@ You can also provide a CSV file with keywords:
 python ~/ML-based-Image-Matching/scripts/scrape.py --csv_file "keywords.csv"
 ```
 
+This script saves the scraped images under `scrape/` folder by creating a unique folder for each scraped keyword. For exmaple if the keyword is `nature` then the images will be saved under `scrpaed/nature`.
+
 ### Processing Images
 
-To process the scraped images under `~/ML-based-Image-Matching/data/scraped/keyword/`, use the `main.py` script:
+To process the scraped images under `~/ML-based-Image-Matching/data/scraped/<keyword>/`, use the `main.py` script:
 
 ```sh
 python ~/ML-based-Image-Matching/scripts/main.py
 ```
+This script will process each folder present under `~/ML-based-Image-Matching/data/scraped/`and copy the images that contain a match under `~/ML-based-Image-Matching/data/detected/<keyword>`
 
 ## Scripts
 
