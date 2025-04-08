@@ -78,14 +78,14 @@ def load_design_embeddings(name: str) -> tuple:
     - design_labels: Loaded design labels (list)
     """
     if name == 'clip':
-        with open("/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/clip_embeddings.pkl", 'rb') as f:
+        with open("./data/embeddings/clip_embeddings.pkl", 'rb') as f:
             design_embeddings = pickle.load(f)
     
     elif name == 'vit':
-        with open("/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/vit_embeddings.pkl", 'rb') as f:
+        with open("./data/embeddings/vit_embeddings.pkl", 'rb') as f:
             design_embeddings = pickle.load(f)
 
-    with open("/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/labels.pkl", 'rb') as f:
+    with open("./data/embeddings/labels.pkl", 'rb') as f:
         design_labels = pickle.load(f)
 
     return design_embeddings, design_labels
@@ -162,11 +162,8 @@ def check_design_label_match(top_k_design_labels: list, file: str) -> bool:
             return True
     return False
 
-import os
 import torch
-from PIL import Image
 from transformers import ViTForImageClassification, ViTFeatureExtractor
-import pickle
 
 def generate_embeddings():
 
@@ -180,7 +177,7 @@ def generate_embeddings():
     ViT_model.to(device)
 
     # Path to the directory containing the images
-    images_dir = "/Users/ilerisoy/Vlisco data/Classics/designs"
+    images_dir = "path/to/images/of/Classics/designs"
     image_paths = [os.path.join(images_dir, img) for img in os.listdir(images_dir) if img.endswith((".jpg", ".png", ".jpeg", ".jp2"))]
 
     # List to store the embeddings
@@ -213,7 +210,7 @@ def generate_embeddings():
             print(f"Processed {i + 1} images")
 
     # Save the embeddings as a list of tensors using pickle
-    output_path = "/Users/ilerisoy/Vlisco/ML-based-Image-Matching/data/embeddings/embeddings.pkl"
+    output_path = "./data/embeddings/embeddings.pkl"
     with open(output_path, "wb") as f:
         pickle.dump(embeddings, f)
 
