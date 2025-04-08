@@ -53,6 +53,9 @@ python ~/ML-based-Image-Matching/scripts/main.py
 ```
 This script will process each folder present under `~/ML-based-Image-Matching/data/scraped/`and copy the images that contain a match under `~/ML-based-Image-Matching/data/detected/<keyword>`
 
+### Porject Configuration
+The script called `config.py` initializes the necessary configurations for the project. The `threshold` variable defines the selectiveness of the model, meaning that the number of false positives will increase as the threshold increases.
+
 ## Scripts
 
 ### scrape.py
